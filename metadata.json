@@ -1,0 +1,7 @@
+{
+  "name": "BGMI: Battlegrounds 1000m Low-Spec Edition",
+  "description": "Optimized 1000m x 1000m tactical battle royale 3D game with simple shadows, parachute drops, drivable vehicles, bot AI, blue zone, realistic weapons and chicken dinner victories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
