@@ -1,93 +1,12 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>BGMI Low-Spec Prototype</title>
-<style>
-  body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Arial; }
-  #info { position: absolute; top: 10px; left: 10px; color: white;
-          background: rgba(0,0,0,0.4); padding: 8px; border-radius: 6px; }
-</style>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
-</head>
-<body>
-<div id="info">Click to start | WASD: move | Mouse: look | ESC: pause</div>
-
-<script type="module">
-import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB);
-
-const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
-camera.position.set(0, 1.7, 10);
-
-const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(1);
-document.body.appendChild(renderer.domElement);
-
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(1000, 1000),
-  new THREE.MeshBasicMaterial({ color: 0x3a7d44 })
-);
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
-
-const bot = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 2, 1),
-  new THREE.MeshBasicMaterial({ color: 0xff0000 })
-);
-bot.position.set(0, 1, -20);
-scene.add(bot);
-
-const controls = new PointerLockControls(camera, document.body);
-document.body.addEventListener('click', () => controls.lock());
-
-const keys = {};
-addEventListener('keydown', e => keys[e.code] = true);
-addEventListener('keyup', e => keys[e.code] = false);
-
-const speed = 8;
-let last = performance.now();
-
-function animate() {
-  requestAnimationFrame(animate);
-  const now = performance.now();
-  const dt = (now - last) / 1000;
-  last = now;
-
-  if (controls.isLocked) {
-    if (keys['KeyW']) controls.moveForward(speed * dt);
-    if (keys['KeyS']) controls.moveForward(-speed * dt);
-    if (keys['KeyA']) controls.moveRight(-speed * dt);
-    if (keys['KeyD']) controls.moveRight(speed * dt);
-  }
-
-  const dir = new THREE.Vector3().subVectors(camera.position, bot.position);
-  dir.y = 0;
-  if (dir.length() > 3) {
-    dir.normalize();
-    bot.position.addScaledVector(dir, 2 * dt);
-  }
-
-  renderer.render(scene, camera);
-}
-animate();
-
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Miramar Battleground 3D</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
