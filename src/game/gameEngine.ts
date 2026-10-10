@@ -402,12 +402,8 @@ export class GameEngine {
           this.dropFromPlane();
         } else if (this.gamePhase === 'freefall') {
           this.deployParachute();
-        } else if (this.gamePhase === 'ground' && !this.isCrouched && !this.isProne) {
-          const worldY = resolveWorldHeight(this.playerPos, getTerrainHeight, this.worldBuilder.colliders);
-          if (this.playerPos.y <= worldY + 0.1) {
-            this.playerVel.y = 5.8; // responsive jump impulse
-            sound.playJump();
-          }
+        } else if (this.gamePhase === 'ground') {
+          this.startReload();
         }
       } else if (e.code === 'KeyF') {
         this.handleInteract();
@@ -419,8 +415,16 @@ export class GameEngine {
         setTimeout(() => this.callbacks.onPromptChange(null), 2500);
       } else if (e.code === 'Space') {
         e.preventDefault(); // Prevent page scrolling
-        if (this.gamePhase === 'ground') {
-          this.startReload();
+        if (this.gamePhase === 'in_plane') {
+          this.dropFromPlane();
+        } else if (this.gamePhase === 'freefall') {
+          this.deployParachute();
+        } else if (this.gamePhase === 'ground' && !this.isCrouched && !this.isProne) {
+          const worldY = resolveWorldHeight(this.playerPos, getTerrainHeight, this.worldBuilder.colliders);
+          if (this.playerPos.y <= worldY + 0.1) {
+            this.playerVel.y = 5.8; // responsive jump impulse
+            sound.playJump();
+          }
         }
       }
     });
@@ -887,8 +891,8 @@ export class GameEngine {
     this.playerPos.x = Math.max(-330, Math.min(330, this.playerPos.x));
     this.playerPos.z = Math.max(-330, Math.min(330, this.playerPos.z));
 
-    if (this.keys['KeyR'] && !this.isCrouched && !this.isProne && this.playerPos.y <= worldY + 0.1) {
-      this.playerVel.y = 5.5;
+    if ((this.keys['Space'] || this.keys['KeyR']) && !this.isCrouched && !this.isProne && this.playerPos.y <= worldY + 0.1) {
+      this.playerVel.y = 5.8;
       sound.playJump();
     }
   }

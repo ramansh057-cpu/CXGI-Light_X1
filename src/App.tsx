@@ -394,19 +394,33 @@ export default function App() {
             }}
           />
 
-          {/* Pointer Lock Helper Prompt */}
+          {/* Pointer Lock Helper Prompt for Laptops & Desktops */}
           {!isPointerLocked && !showFullMap && !showInventory && !showSettingsModal && !gameOverStats && (
             <div
               onClick={() => engineRef.current?.requestPointerLock()}
-              className="absolute inset-0 z-25 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer"
+              className="absolute inset-0 z-25 flex items-center justify-center bg-black/55 backdrop-blur-[3px] cursor-pointer"
             >
-              <div className="px-6 py-4 rounded-xl bg-stone-900/90 border border-amber-500/50 shadow-2xl text-center space-y-2 max-w-sm">
-                <Crosshair className="w-8 h-8 text-amber-400 mx-auto animate-pulse" />
-                <div className="text-base font-bold text-stone-100 font-sans">
-                  Click to Lock Mouse & Aim
+              <div className="px-7 py-5 rounded-2xl bg-stone-900/95 border-2 border-amber-500/70 shadow-2xl text-center space-y-3 max-w-md">
+                <Crosshair className="w-10 h-10 text-amber-400 mx-auto animate-pulse" />
+                <div className="text-lg font-black text-white font-sans tracking-wide">
+                  CLICK ANYWHERE TO PLAY
                 </div>
-                <div className="text-xs text-stone-400 font-mono">
-                  Move mouse to look around · Left Click to fire · Press [ESC] for settings
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-stone-300 text-left bg-black/50 p-3 rounded-xl border border-white/10">
+                  <div><span className="text-amber-400 font-bold">W A S D</span> : Move</div>
+                  <div><span className="text-amber-400 font-bold">Mouse/Trackpad</span> : Look</div>
+                  <div><span className="text-amber-400 font-bold">Left Click</span> : Shoot</div>
+                  <div><span className="text-amber-400 font-bold">Right Click</span> : Aim Scope</div>
+                  <div><span className="text-amber-400 font-bold">SPACE</span> : Jump / Vault</div>
+                  <div><span className="text-amber-400 font-bold">R</span> : Reload</div>
+                  <div><span className="text-amber-400 font-bold">SHIFT</span> : Sprint</div>
+                  <div><span className="text-amber-400 font-bold">C / Z</span> : Crouch / Prone</div>
+                  <div><span className="text-amber-400 font-bold">1 / 2</span> : Switch Gun</div>
+                  <div><span className="text-amber-400 font-bold">F</span> : Drive Car / Loot</div>
+                  <div><span className="text-amber-400 font-bold">M</span> : Full Map</div>
+                  <div><span className="text-amber-400 font-bold">TAB</span> : Bag / Inventory</div>
+                </div>
+                <div className="text-[10px] text-amber-300/90 font-mono">
+                  Press [ESC] at any time to release mouse or open settings
                 </div>
               </div>
             </div>
