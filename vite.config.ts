@@ -5,8 +5,8 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(({ command }) => {
   return {
-    // Use repository name as base path for GitHub Pages build, or root for local dev
-    base: command === 'build' ? './' : '/',
+    // Always use relative paths for production web builds (itch.io, static hosting)
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
