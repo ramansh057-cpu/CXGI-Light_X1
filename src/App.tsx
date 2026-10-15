@@ -239,9 +239,9 @@ export default function App() {
             {/* Zone 1: Single Brand element */}
             <div className="flex items-center gap-2">
               <span className="text-xl md:text-2xl font-extrabold tracking-wider text-amber-400 font-sans">
-                BGMI: BATTLEGROUNDS
+                MIRAMAR STRIKE 3D
               </span>
-              <span className="text-xs font-mono text-stone-400 hidden sm:inline">1000m x 1000m Island</span>
+              <span className="text-xs font-mono text-stone-400 hidden sm:inline">700m x 700m Desert Island</span>
             </div>
 
             {/* Zone 2: Navigation / Info */}
