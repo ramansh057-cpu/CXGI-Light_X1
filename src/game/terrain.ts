@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { MAP_POIS, POILocation } from './types';
 
-export const MAP_SIZE = 700;
-export const HALF_MAP = MAP_SIZE / 2; // 350
+export const MAP_SIZE = 1000;
+export const HALF_MAP = MAP_SIZE / 2; // 500
 export const WATER_HEIGHT = 2.0;
 
 // Road waypoint network connecting major settlements

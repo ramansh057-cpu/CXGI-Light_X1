@@ -317,8 +317,7 @@ export class WorldBuilder {
         if (row === 0 && col === -1) continue; // leave room for casino next to arena
         const bx = col * 32 + (Math.sin(row) * 4);
         const bz = row * 32 + (Math.cos(col) * 4);
-        const isTwoStory = (row + col) % 2 === 0;
-        this.buildHouse(bx, bz, isTwoStory ? 2 : 1, isTwoStory ? wallWhiteMat : wallBrickMat, roofMat, floorMat);
+        this.buildHouse(bx, bz, 4, wallWhiteMat, roofMat, floorMat);
       }
     }
     // Pecado Boxing Arena (Stadium) in the center
@@ -359,7 +358,7 @@ export class WorldBuilder {
     for (let i = 0; i < 4; i++) {
       const hx = scX + 45 + (i % 2) * 26;
       const hz = scZ + Math.floor(i / 2) * 26;
-      this.buildHouse(hx, hz, 1, wallWhiteMat, roofMat, floorMat);
+      this.buildHouse(hx, hz, 4, wallWhiteMat, roofMat, floorMat);
     }
 
     // 4e. LOS LEONES SKELETONS METROPOLIS (Unfinished Brick/Concrete Buildings)
@@ -419,9 +418,9 @@ export class WorldBuilder {
     const sgZ = -850;
     const sgY = getTerrainHeight(sgX, sgZ);
     const wallColor = new THREE.MeshLambertMaterial({ color: 0xccb096 });
-    this.buildHouse(sgX, sgZ, 2, wallWhiteMat, roofMat, floorMat);
-    this.buildHouse(sgX - 22, sgZ - 10, 1, wallBrickMat, roofMat, floorMat);
-    this.buildHouse(sgX + 22, sgZ + 10, 1, wallWhiteMat, roofMat, floorMat);
+    this.buildHouse(sgX, sgZ, 4, wallWhiteMat, roofMat, floorMat);
+    this.buildHouse(sgX - 22, sgZ - 10, 4, wallBrickMat, roofMat, floorMat);
+    this.buildHouse(sgX + 22, sgZ + 10, 4, wallWhiteMat, roofMat, floorMat);
     this.buildStandAloneWall(sgX - 35, sgY, sgZ, 2, 3.5, 40, wallColor); // West Compound Wall
     this.buildStandAloneWall(sgX + 35, sgY, sgZ, 2, 3.5, 40, wallColor); // East Compound Wall
     this.buildStandAloneWall(sgX, sgY, sgZ - 20, 70, 3.5, 2, wallColor); // South Compound Wall

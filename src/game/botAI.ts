@@ -24,6 +24,7 @@ export type BotState =
   | 'patrolling'
   | 'searching_sound'
   | 'engaging'
+  | 'flee'
   | 'driving'
   | 'fleeing_zone'
   | 'knocked'
@@ -640,12 +641,49 @@ export class BotManager {
 
       // Switch to engaging if target found
       if (foundOpponentPos && foundOpponentId) {
-        if (bot.state !== 'engaging' || bot.targetEnemy !== foundOpponentId) {
+        if (bot.health < 30) {
+          bot.state = 'flee';
+          // Run away from threat towards nearest POI building or terrain cover
+          const runAngle = Math.atan2(bot.position.x - foundOpponentPos.x, bot.position.z - foundOpponentPos.z);
+          bot.targetPosition.set(
+            bot.position.x + Math.sin(runAngle) * 60,
+            0,
+            bot.position.z + Math.cos(runAngle) * 60
+          );
+          bot.stateTimer = 5.0;
+        } else if (bot.state !== 'engaging' || bot.targetEnemy !== foundOpponentId) {
           bot.state = 'engaging';
           bot.targetEnemy = foundOpponentId;
           bot.targetEnemyType = foundOpponentType;
           bot.reactionTimer = 0.4 + Math.random() * 0.3; // Pro reaction time
         }
+      }
+
+      // 5b. FLEE STATE: Run away from player/enemies when health < 30%
+      if (bot.state === 'flee') {
+        if (bot.health >= 35 || bot.stateTimer <= 0) {
+          bot.state = 'patrolling';
+          bot.stateTimer = 6;
+          continue;
+        }
+
+        bot.stateTimer -= dt;
+        const fdx = bot.targetPosition.x - bot.position.x;
+        const fdz = bot.targetPosition.z - bot.position.z;
+        const fdist = Math.hypot(fdx, fdz);
+
+        if (fdist > 3) {
+          bot.rotationY = Math.atan2(fdx, fdz);
+          bot.mesh.rotation.y = bot.rotationY;
+          bot.position.x += (fdx / fdist) * 6.8 * dt; // Fast sprint away
+          bot.position.z += (fdz / fdist) * 6.8 * dt;
+          resolveHorizontalCollisions(bot.position, 0.45, 1.8, this.worldBuilder.colliders);
+        } else {
+          // Reached cover position, hide and patrol locally
+          bot.state = 'patrolling';
+          bot.stateTimer = 4;
+        }
+        continue;
       }
 
       // 5. COMBAT BEHAVIOR: PRO BGMI JIGGLE STRAFE & FIRE BURSTS
