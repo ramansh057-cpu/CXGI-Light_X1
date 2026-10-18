@@ -32,7 +32,7 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     category: 'AR',
     ammoType: '5.56mm',
     magSize: 30,
-    damage: 18, // 5-6 bullets to eliminate (100 HP / 18 = 5.56 hits)
+    damage: 20, // Exactly 5 bullets to eliminate (100 HP / 20 = 5 hits)
     fireRate: 11, // ~660 RPM
     reloadTime: 2.1,
     range: 300,
@@ -41,7 +41,7 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     bulletSpeed: 880,
     scopeType: '4x',
     zoomFov: 32,
-    description: 'Versatile 5.56mm assault rifle. Takes 5-6 accurate hits to knock/finish.',
+    description: 'Versatile 5.56mm assault rifle. Takes exactly 5 accurate hits to knock/finish.',
   },
   akm: {
     id: 'akm',
@@ -49,7 +49,7 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     category: 'AR',
     ammoType: '7.62mm',
     magSize: 30,
-    damage: 18, // 5-6 bullets to eliminate (100 HP / 18 = 5.56 hits)
+    damage: 20, // Exactly 5 bullets to eliminate (100 HP / 20 = 5 hits)
     fireRate: 9.5,
     reloadTime: 2.4,
     range: 280,
@@ -58,7 +58,7 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     bulletSpeed: 715,
     scopeType: 'red_dot',
     zoomFov: 45,
-    description: 'Heavy 7.62mm assault rifle. 5-6 hits to eliminate.',
+    description: 'Heavy 7.62mm assault rifle. Exactly 5 hits to eliminate.',
   },
   awm: {
     id: 'awm',

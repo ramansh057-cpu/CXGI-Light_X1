@@ -117,10 +117,7 @@ export class GameEngine {
   private fppGunMesh!: THREE.Mesh;
   private fppRecoilOffset = 0;
   private fppBobTimer = 0;
-  private muzzleFlashLight!: THREE.PointLight;
 
-  // Visual bullet tracers
-  private activeTracers: { line: THREE.Line; life: number }[] = [];
 
   public inventory: InventoryState = {
     ammo: {
@@ -192,7 +189,7 @@ export class GameEngine {
       precision: 'mediump',
     });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
@@ -207,9 +204,7 @@ export class GameEngine {
       (item) => this.callbacks.onKillFeed(item),
       (pos, type) => this.handleSoundIndicator(pos, type)
     );
-    this.botManager.onBulletTracer = (from, to, isHit) => {
-      this.spawnTracer(from, to, isHit ? 0xff4433 : 0xffcc33);
-    };
+
     this.squadManager = new SquadManager(
       this.scene,
       this.botManager,
@@ -252,22 +247,7 @@ export class GameEngine {
     this.dirLight = new THREE.DirectionalLight(0xfffaee, 1.2);
     this.dirLight.position.set(250, 420, 200);
     this.scene.add(this.dirLight);
-
-    this.muzzleFlashLight = new THREE.PointLight(0xffaa33, 0, 10);
-    this.camera.add(this.muzzleFlashLight);
     this.scene.add(this.camera);
-  }
-
-  public spawnTracer(start: THREE.Vector3, end: THREE.Vector3, color = 0xffcc33): void {
-    const geom = new THREE.BufferGeometry().setFromPoints([start.clone(), end.clone()]);
-    const mat = new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.9,
-    });
-    const line = new THREE.Line(geom, mat);
-    this.scene.add(line);
-    this.activeTracers.push({ line, life: 0.08 });
   }
 
   public applyGraphicSettings(newSettings: GraphicSettings): void {
@@ -829,17 +809,7 @@ export class GameEngine {
     // 14. Contextual Prompts
     this.updateInteractionPrompts();
 
-    // 15. Active Bullet Tracers
-    for (let i = this.activeTracers.length - 1; i >= 0; i--) {
-      const tr = this.activeTracers[i];
-      tr.life -= dt;
-      if (tr.life <= 0) {
-        this.scene.remove(tr.line);
-        tr.line.geometry.dispose();
-        (tr.line.material as THREE.Material).dispose();
-        this.activeTracers.splice(i, 1);
-      }
-    }
+
   }
 
   private updateGroundMovement(dt: number): void {
@@ -966,12 +936,6 @@ export class GameEngine {
     this.cameraPitch += active.recoilPitch * 0.6;
     this.cameraYaw += (Math.random() - 0.5) * (active.recoilYaw * 0.5);
 
-    // Muzzle flash light
-    this.muzzleFlashLight.intensity = 3.0;
-    setTimeout(() => {
-      this.muzzleFlashLight.intensity = 0;
-    }, 45);
-
     this.performBulletHitscan(active);
   }
 
@@ -1044,14 +1008,6 @@ export class GameEngine {
       }
     }
 
-    // Spawn player bullet tracer
-    const startTracer = this.camera.position.clone().add(
-      new THREE.Vector3(0.18, -0.15, -0.4).applyEuler(new THREE.Euler(this.cameraPitch, this.cameraYaw, 0, 'YXZ'))
-    );
-    const endTracer = closestBot
-      ? closestBot.bot.position.clone().add(new THREE.Vector3(0, closestBot.isHeadshot ? 1.6 : 1.1, 0))
-      : (closestWallDist < weapon.range ? intersectPoint : this.camera.position.clone().add(raycaster.ray.direction.clone().multiplyScalar(Math.min(120, weapon.range))));
-    this.spawnTracer(startTracer, endTracer, 0xffd54f);
   }
 
   private meleeSwing(): void {
@@ -1182,21 +1138,7 @@ export class GameEngine {
 
     if (this.playerHealth <= 0) return;
 
-    let dmg = rawDamage;
-    // Calibrate damage mitigation across all armor tiers so enemies reliably knock player down in strictly 4-5 bullets:
-    // None armor: 25.0 dmg -> 4 bullets (100 HP)
-    // Level 1:    24.5 dmg -> 4-5 bullets (4 * 24.5 = 98 HP, 5th knocks)
-    // Level 2:    22.5 dmg -> 5 bullets (4 * 22.5 = 90 HP, 5th knocks)
-    // Level 3:    20.5 dmg -> 5 bullets (4 * 20.5 = 82 HP, 5th knocks)
-    if (this.inventory.armorLevel === 3) {
-      dmg = 20.5;
-    } else if (this.inventory.armorLevel === 2) {
-      dmg = 22.5;
-    } else if (this.inventory.armorLevel === 1) {
-      dmg = 24.5;
-    } else {
-      dmg = 25.0;
-    }
+    let dmg = 20.0; // Exactly 5 hits to knock down player (100 HP / 20 = 5 hits)
 
     this.playerHealth = Math.max(0, this.playerHealth - dmg);
     this.callbacks.onHealthChange(this.playerHealth, this.playerBoost);

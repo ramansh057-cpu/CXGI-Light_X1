@@ -29,6 +29,7 @@ import bgmiCoverArt from './assets/images/bgmi_cover_art_1790771276444.jpg';
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const lobbyTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // App state
   const [inGame, setInGame] = useState(false);
@@ -126,6 +127,11 @@ export default function App() {
       },
       onGameEnd: (isVictory, stats) => {
         setGameOverStats({ isVictory, stats });
+        if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
+        lobbyTimerRef.current = setTimeout(() => {
+          setInGame(false);
+          setGameOverStats(null);
+        }, 3000);
       },
       onPromptChange: (prompt) => {
         setInteractionPrompt(prompt);
@@ -198,6 +204,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
       clearInterval(coordInterval);
       window.removeEventListener('keydown', handleKeyDown);
       engine.destroy();
@@ -213,6 +220,7 @@ export default function App() {
   };
 
   const handleRestartMatch = () => {
+    if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
     setGameOverStats(null);
     if (engineRef.current) {
       engineRef.current.restartMatch();

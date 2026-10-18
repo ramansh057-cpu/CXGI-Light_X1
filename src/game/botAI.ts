@@ -98,6 +98,7 @@ export class BotManager {
   private worldBuilder: WorldBuilder;
   private onKillFeed: (item: KillFeedItem) => void;
   private onSoundMade: (pos: THREE.Vector3, type: 'gunshot' | 'footstep') => void;
+  private frameCounter = 0;
 
   constructor(
     scene: THREE.Scene,
@@ -356,6 +357,7 @@ export class BotManager {
     isPlayerCrouched: boolean,
     onPlayerDamage: (damage: number, attackerName: string, weapon: WeaponId) => void
   ): void {
+    this.frameCounter++;
     const activeBots = this.bots.filter(b => b.state !== 'dead' && b.state !== 'in_plane');
 
     // FOOLPROOF SAFETY SWEEP: Hide dead/in-plane bots to prevent static "ghost" models
@@ -614,34 +616,40 @@ export class BotManager {
       let foundOpponentType: 'player' | 'bot' = 'bot';
       let shortestDist = 120; // 120m detection range (increased for visibility)
 
-      // Check player (must have direct line of sight or be extremely close < 15m, and player MUST be grounded & outside of houses)
+      // Check player (must have direct line of sight or be close < 55m, and player MUST be grounded & outside of houses)
       const botEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
       const playerTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
       const playerEyePos = new THREE.Vector3(playerPos.x, playerPos.y + playerTargetHeight, playerPos.z);
-      const hasSightToPlayer = distToPlayer < 15.0 || checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders);
-      
       const isPlayerInsideBuilding = isPositionInsideBuilding(playerPos, this.worldBuilder.colliders);
       const isPlayerTargetable = playerHealth > 0 && gamePhase === 'ground' && !isPlayerInsideBuilding;
-      if (isPlayerTargetable && distToPlayer < shortestDist && hasSightToPlayer) {
-        shortestDist = distToPlayer;
-        foundOpponentPos = playerPos;
-        foundOpponentId = 'player';
-        foundOpponentType = 'player';
+
+      if (isPlayerTargetable && (distToPlayer < 55.0 || bot.targetEnemy === 'player')) {
+        const hasSightToPlayer = distToPlayer < 15.0 || checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders);
+        if (hasSightToPlayer && distToPlayer < shortestDist) {
+          shortestDist = distToPlayer;
+          foundOpponentPos = playerPos;
+          foundOpponentId = 'player';
+          foundOpponentType = 'player';
+        }
       }
 
-      // Check other bots (Active Bot vs Bot encounters!)
-      for (let j = 0; j < activeBots.length; j++) {
-        if (i === j) continue;
-        const other = activeBots[j];
-        if (other.state === 'dead' || other.state === 'in_plane') continue;
+      // Check other bots (Staggered active Bot vs Bot encounters to prevent CPU lag on low-end laptops)
+      if ((i + this.frameCounter) % 3 === 0) {
+        for (let j = 0; j < activeBots.length; j++) {
+          if (i === j) continue;
+          const other = activeBots[j];
+          if (other.state === 'dead' || other.state === 'in_plane') continue;
 
-        const d = bot.position.distanceTo(other.position);
-        const hasSightToOther = d < 12.0 || checkLineOfSight(bot.position, other.position, this.worldBuilder.colliders);
-        if (d < shortestDist && hasSightToOther) {
-          shortestDist = d;
-          foundOpponentPos = other.position;
-          foundOpponentId = other.id;
-          foundOpponentType = 'bot';
+          const d = bot.position.distanceTo(other.position);
+          if (d > 35) continue; // Skip bots that are too far to save CPU cycles
+
+          const hasSightToOther = d < 12.0 || checkLineOfSight(bot.position, other.position, this.worldBuilder.colliders);
+          if (d < shortestDist && hasSightToOther) {
+            shortestDist = d;
+            foundOpponentPos = other.position;
+            foundOpponentId = other.id;
+            foundOpponentType = 'bot';
+          }
         }
       }
 
@@ -827,8 +835,8 @@ export class BotManager {
                   }
 
                   if (isHit) {
-                    // Enemies hit player for 25 base damage: exactly 4-5 bullets knock down 100 HP!
-                    const rawDmg = 25;
+                    // Enemies hit player for 20 damage: exactly 5 hits knock down 100 HP!
+                    const rawDmg = 20;
                     onPlayerDamage(rawDmg, bot.name, bot.weapon);
                   }
                 } else {
@@ -847,7 +855,7 @@ export class BotManager {
                     if (this.onBulletTracer) {
                       this.onBulletTracer(botMuzzle, otherTarget, true);
                     }
-                    const dmgPerShot = 25; // 4-5 bullets to knock down other bot
+                    const dmgPerShot = 20; // Exactly 5 hits to knock down other bot (100 HP / 20 = 5)
                     const result = this.damageBot(otherBot.id, dmgPerShot, Math.random() > 0.85, bot.name, bot.weaponDef.name);
                     if (result.isDead) {
                       bot.kills++;

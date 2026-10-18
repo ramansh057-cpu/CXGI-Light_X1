@@ -22,6 +22,15 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   stats,
   onRestart,
 }) => {
+  const [countdown, setCountdown] = React.useState(3);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const minutes = Math.floor(stats.survivalTime / 60);
   const seconds = stats.survivalTime % 60;
   const timeFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
@@ -106,6 +115,10 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <RotateCcw className="w-4 h-4" />
           <span>Deploy Again (Play Again)</span>
         </button>
+
+        <div className="mt-3 text-xs font-mono text-stone-400">
+          Returning to lobby in <span className="text-amber-400 font-bold">{countdown}s</span>...
+        </div>
       </div>
     </div>
   );
