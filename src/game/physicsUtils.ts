@@ -17,6 +17,12 @@ export function resolveHorizontalCollisions(
 
   for (const collider of colliders) {
     if (boundingBox.intersectsBox(collider.box)) {
+      // If this collider is a low step or floor (within stepping height of player feet), allow walking onto it without horizontal pushback
+      const heightAboveFeet = collider.box.max.y - pos.y;
+      if (heightAboveFeet <= 0.75 && heightAboveFeet >= -0.3) {
+        continue;
+      }
+
       const overlapX = Math.min(boundingBox.max.x - collider.box.min.x, collider.box.max.x - boundingBox.min.x);
       const overlapZ = Math.min(boundingBox.max.z - collider.box.min.z, collider.box.max.z - boundingBox.min.z);
 
@@ -46,16 +52,17 @@ export function resolveWorldHeight(
   const terrainY = terrainHeightFunc(pos.x, pos.z);
   let highestY = terrainY;
 
-  // Probe slightly around player to find floor
+  // Probe slightly around player to find floor or stairs
   const probeBox = new THREE.Box3().setFromCenterAndSize(
-    new THREE.Vector3(pos.x, pos.y + 0.5, pos.z),
-    new THREE.Vector3(0.5, 1.2, 0.5)
+    new THREE.Vector3(pos.x, pos.y + 0.3, pos.z),
+    new THREE.Vector3(0.6, 1.0, 0.6)
   );
 
   for (const collider of colliders) {
     if (probeBox.intersectsBox(collider.box)) {
-      // Only treat as floor if we are above the collider's top or within stepping height (0.5m)
-      if (pos.y >= collider.box.max.y - 0.55) {
+      const heightAboveFeet = collider.box.max.y - pos.y;
+      // If collider top is within stepping range (up to 0.85m above feet or below player body)
+      if (heightAboveFeet <= 0.85 && heightAboveFeet >= -0.5) {
         highestY = Math.max(highestY, collider.box.max.y);
       }
     }

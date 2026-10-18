@@ -129,8 +129,7 @@ export default function App() {
         setGameOverStats({ isVictory, stats });
         if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
         lobbyTimerRef.current = setTimeout(() => {
-          setInGame(false);
-          setGameOverStats(null);
+          handleRestartMatch();
         }, 3000);
       },
       onPromptChange: (prompt) => {

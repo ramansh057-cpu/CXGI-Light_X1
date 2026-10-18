@@ -117,7 +117,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         </button>
 
         <div className="mt-3 text-xs font-mono text-stone-400">
-          Returning to lobby in <span className="text-amber-400 font-bold">{countdown}s</span>...
+          Resetting match in <span className="text-amber-400 font-bold">{countdown}s</span>...
         </div>
       </div>
     </div>

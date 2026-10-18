@@ -1022,7 +1022,9 @@ export class BotManager {
     if (!bot) return { isDead: true, isKnocked: false, remainingHealth: 0 };
 
     let finalDamage = damage;
-    if (isHeadshot) {
+    if (killerName === 'You') {
+      finalDamage = bot.maxHealth / 5; // Exactly 5 hits from player to enemy
+    } else if (isHeadshot) {
       finalDamage *= 1.35;
     }
 

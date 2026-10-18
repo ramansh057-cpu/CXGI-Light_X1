@@ -188,8 +188,11 @@ export class GameEngine {
       powerPreference: 'high-performance',
       precision: 'mediump',
     });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+    this.renderer.setSize(container.clientWidth * this.settings.renderScale, container.clientHeight * this.settings.renderScale, false);
+    this.renderer.domElement.style.width = '100%';
+    this.renderer.domElement.style.height = '100%';
+    this.renderer.domElement.style.imageRendering = 'pixelated';
+    this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
@@ -258,6 +261,8 @@ export class GameEngine {
     this.renderer.setSize(w * newSettings.renderScale, h * newSettings.renderScale, false);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
+    this.renderer.domElement.style.imageRendering = 'pixelated';
+
 
     this.camera.far = newSettings.drawDistance;
     this.camera.updateProjectionMatrix();
@@ -372,122 +377,122 @@ export class GameEngine {
     this.safeZone.isShrinking = false;
   }
 
+  private handleKeyDown = (e: KeyboardEvent) => {
+    this.keys[e.code] = true;
+    if (e.code === 'Digit1') {
+      this.switchWeaponSlot(1);
+    } else if (e.code === 'Digit2') {
+      this.switchWeaponSlot(2);
+    } else if (e.code === 'Digit3') {
+      this.switchWeaponSlot(3);
+    } else if (e.code === 'Digit7') {
+      this.useConsumable('medkit');
+    } else if (e.code === 'Digit8') {
+      this.useConsumable('first_aid');
+    } else if (e.code === 'Digit9') {
+      this.useConsumable('bandage');
+    } else if (e.code === 'Digit0') {
+      this.useConsumable('energy_drink');
+    } else if (e.code === 'KeyH') {
+      if (this.inventory.consumables.medkit > 0) this.useConsumable('medkit');
+      else if (this.inventory.consumables.first_aid > 0) this.useConsumable('first_aid');
+      else if (this.inventory.consumables.bandage > 0) this.useConsumable('bandage');
+    } else if (e.code === 'KeyR') {
+      e.preventDefault();
+      if (this.gamePhase === 'in_plane') {
+        this.dropFromPlane();
+      } else if (this.gamePhase === 'freefall') {
+        this.deployParachute();
+      } else if (this.gamePhase === 'ground') {
+        this.startReload();
+      }
+    } else if (e.code === 'KeyF') {
+      this.handleInteract();
+    } else if (e.code === 'KeyY') {
+      this.settings.invertMouseY = !this.settings.invertMouseY;
+      this.callbacks.onPromptChange(
+        `Vertical Look: ${this.settings.invertMouseY ? 'INVERTED' : 'STANDARD (Mouse UP = Look UP)'}`
+      );
+      setTimeout(() => this.callbacks.onPromptChange(null), 2500);
+    } else if (e.code === 'Space') {
+      e.preventDefault();
+      if (this.gamePhase === 'in_plane') {
+        this.dropFromPlane();
+      } else if (this.gamePhase === 'freefall') {
+        this.deployParachute();
+      } else if (this.gamePhase === 'ground' && !this.isCrouched && !this.isProne) {
+        const worldY = resolveWorldHeight(this.playerPos, getTerrainHeight, this.worldBuilder.colliders);
+        if (this.playerPos.y <= worldY + 0.1) {
+          this.playerVel.y = 5.8;
+          sound.playJump();
+        }
+      }
+    }
+  };
+
+  private handleKeyUp = (e: KeyboardEvent) => {
+    this.keys[e.code] = false;
+  };
+
+  private handleMouseDown = (e: MouseEvent) => {
+    sound.resume();
+    if (!this.isPointerLocked) {
+      this.requestPointerLock();
+      return;
+    }
+    if (e.button === 0) {
+      this.isMouseDown = true;
+    } else if (e.button === 2) {
+      this.isRightMouseDown = true;
+      this.isScoping = true;
+    }
+  };
+
+  private handleMouseUp = (e: MouseEvent) => {
+    if (e.button === 0) {
+      this.isMouseDown = false;
+    } else if (e.button === 2) {
+      this.isRightMouseDown = false;
+      this.isScoping = false;
+    }
+  };
+
+  private handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
+  private handlePointerLockChange = () => {
+    this.isPointerLocked = document.pointerLockElement === this.container;
+  };
+
+  private handleMouseMove = (e: MouseEvent) => {
+    if (!this.isPointerLocked) return;
+    const sens = 0.0022 * this.settings.mouseSensitivity * (this.isScoping ? 0.45 : 1.0);
+    const invertFactor = this.settings.invertMouseY ? -1 : 1;
+
+    this.cameraYaw -= e.movementX * sens;
+    this.cameraPitch -= e.movementY * sens * invertFactor;
+    this.cameraPitch = Math.max(-1.48, Math.min(1.48, this.cameraPitch));
+  };
+
+  private handleResize = () => {
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(w * this.settings.renderScale, h * this.settings.renderScale, false);
+    this.renderer.domElement.style.width = '100%';
+    this.renderer.domElement.style.height = '100%';
+    this.renderer.domElement.style.imageRendering = 'pixelated';
+  };
+
   private setupInputHandlers(): void {
-    window.addEventListener('keydown', (e) => {
-      this.keys[e.code] = true;
-      if (e.code === 'Digit1') {
-        this.switchWeaponSlot(1);
-      } else if (e.code === 'Digit2') {
-        this.switchWeaponSlot(2);
-      } else if (e.code === 'Digit3') {
-        this.switchWeaponSlot(3);
-      } else if (e.code === 'Digit7') {
-        this.useConsumable('medkit');
-      } else if (e.code === 'Digit8') {
-        this.useConsumable('first_aid');
-      } else if (e.code === 'Digit9') {
-        this.useConsumable('bandage');
-      } else if (e.code === 'Digit0') {
-        this.useConsumable('energy_drink');
-      } else if (e.code === 'KeyH') {
-        // Auto-heal logic: use medkit if low, else first aid, else bandage
-        if (this.inventory.consumables.medkit > 0) this.useConsumable('medkit');
-        else if (this.inventory.consumables.first_aid > 0) this.useConsumable('first_aid');
-        else if (this.inventory.consumables.bandage > 0) this.useConsumable('bandage');
-      } else if (e.code === 'KeyR') {
-        e.preventDefault();
-        if (this.gamePhase === 'in_plane') {
-          this.dropFromPlane();
-        } else if (this.gamePhase === 'freefall') {
-          this.deployParachute();
-        } else if (this.gamePhase === 'ground') {
-          this.startReload();
-        }
-      } else if (e.code === 'KeyF') {
-        this.handleInteract();
-      } else if (e.code === 'KeyY') {
-        this.settings.invertMouseY = !this.settings.invertMouseY;
-        this.callbacks.onPromptChange(
-          `Vertical Look: ${this.settings.invertMouseY ? 'INVERTED' : 'STANDARD (Mouse UP = Look UP)'}`
-        );
-        setTimeout(() => this.callbacks.onPromptChange(null), 2500);
-      } else if (e.code === 'Space') {
-        e.preventDefault(); // Prevent page scrolling
-        if (this.gamePhase === 'in_plane') {
-          this.dropFromPlane();
-        } else if (this.gamePhase === 'freefall') {
-          this.deployParachute();
-        } else if (this.gamePhase === 'ground' && !this.isCrouched && !this.isProne) {
-          const worldY = resolveWorldHeight(this.playerPos, getTerrainHeight, this.worldBuilder.colliders);
-          if (this.playerPos.y <= worldY + 0.1) {
-            this.playerVel.y = 5.8; // responsive jump impulse
-            sound.playJump();
-          }
-        }
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      this.keys[e.code] = false;
-    });
-
-    this.container.addEventListener('mousedown', (e) => {
-      sound.resume();
-      if (!this.isPointerLocked) {
-        this.requestPointerLock();
-        return;
-      }
-      if (e.button === 0) {
-        this.isMouseDown = true;
-      } else if (e.button === 2) {
-        this.isRightMouseDown = true;
-        this.isScoping = true;
-      }
-    });
-
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 0) {
-        this.isMouseDown = false;
-      } else if (e.button === 2) {
-        this.isRightMouseDown = false;
-        this.isScoping = false;
-      }
-    });
-
-    this.container.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    document.addEventListener('pointerlockchange', () => {
-      this.isPointerLocked = document.pointerLockElement === this.container;
-    });
-
-    /**
-     * MOUSE LOOK: Fixed natural standard orientation
-     * Mouse UP -> Camera looks UP
-     * Mouse DOWN -> Camera looks DOWN
-     * Supports optional invertMouseY setting
-     */
-    window.addEventListener('mousemove', (e) => {
-      if (!this.isPointerLocked) return;
-      const sens = 0.0022 * this.settings.mouseSensitivity * (this.isScoping ? 0.45 : 1.0);
-      const invertFactor = this.settings.invertMouseY ? -1 : 1;
-
-      // Horizontal Yaw: mouse right turns camera right
-      this.cameraYaw -= e.movementX * sens;
-
-      // Vertical Pitch: Fixed to standard orientation (UP = UP)
-      this.cameraPitch -= e.movementY * sens * invertFactor;
-
-      // Clamp vertical pitch to prevent neck inversion (-85 to +85 degrees)
-      this.cameraPitch = Math.max(-1.48, Math.min(1.48, this.cameraPitch));
-    });
-
-    window.addEventListener('resize', () => {
-      const w = this.container.clientWidth;
-      const h = this.container.clientHeight;
-      this.camera.aspect = w / h;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(w * this.settings.renderScale, h * this.settings.renderScale, false);
-    });
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
+    this.container.addEventListener('mousedown', this.handleMouseDown);
+    window.addEventListener('mouseup', this.handleMouseUp);
+    this.container.addEventListener('contextmenu', this.handleContextMenu);
+    document.addEventListener('pointerlockchange', this.handlePointerLockChange);
+    window.addEventListener('mousemove', this.handleMouseMove);
+    window.addEventListener('resize', this.handleResize);
   }
 
   public requestPointerLock(): void {
@@ -1469,6 +1474,16 @@ export class GameEngine {
       cancelAnimationFrame(this.animFrameId);
     }
     this.exitPointerLock();
+
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    this.container.removeEventListener('mousedown', this.handleMouseDown);
+    window.removeEventListener('mouseup', this.handleMouseUp);
+    this.container.removeEventListener('contextmenu', this.handleContextMenu);
+    document.removeEventListener('pointerlockchange', this.handlePointerLockChange);
+    window.removeEventListener('mousemove', this.handleMouseMove);
+    window.removeEventListener('resize', this.handleResize);
+
     this.renderer.dispose();
   }
 }

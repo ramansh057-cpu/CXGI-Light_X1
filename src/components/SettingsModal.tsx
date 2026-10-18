@@ -25,7 +25,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       onUpdateSettings({
         ...settings,
         shadowMode: 'simple_blob',
-        renderScale: 0.75,
+        renderScale: 0.65,
         drawDistance: 350,
         targetFps: 60,
       });
@@ -33,7 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       onUpdateSettings({
         ...settings,
         shadowMode: 'simple_blob',
-        renderScale: 1.0,
+        renderScale: 0.65,
         drawDistance: 600,
         targetFps: 60,
       });
@@ -140,7 +140,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>Resolution / Render Scale</span>
               <span className="text-stone-400 text-[11px]">{Math.round(settings.renderScale * 100)}%</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => onUpdateSettings({ ...settings, renderScale: 0.65 })}
+                className={`py-1.5 text-xs rounded font-mono border transition-colors ${
+                  settings.renderScale === 0.65
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-semibold'
+                    : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                65% (Pixelated 60 FPS)
+              </button>
               <button
                 onClick={() => onUpdateSettings({ ...settings, renderScale: 0.75 })}
                 className={`py-1.5 text-xs rounded font-mono border transition-colors ${
@@ -149,7 +159,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:text-stone-200'
                 }`}
               >
-                75% (Smooth 60 FPS on older GPUs)
+                75% (Balanced)
               </button>
               <button
                 onClick={() => onUpdateSettings({ ...settings, renderScale: 1.0 })}
@@ -159,7 +169,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:text-stone-200'
                 }`}
               >
-                100% (Native Sharp)
+                100% (Native)
               </button>
             </div>
           </div>
