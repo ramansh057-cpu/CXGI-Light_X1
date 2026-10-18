@@ -74,6 +74,7 @@ export interface BotInstance {
   leftLeg: THREE.Mesh;
   rightLeg: THREE.Mesh;
   walkTimer: number;
+  footstepTimer: number;
   lastX?: number;
   lastZ?: number;
   stuckTimer?: number;
@@ -92,6 +93,7 @@ const BOT_NAMES = [
 
 export class BotManager {
   public bots: BotInstance[] = [];
+  public onBulletTracer?: (from: THREE.Vector3, to: THREE.Vector3, isHit: boolean) => void;
   private scene: THREE.Scene;
   private worldBuilder: WorldBuilder;
   private onKillFeed: (item: KillFeedItem) => void;
@@ -197,6 +199,7 @@ export class BotManager {
         leftLeg,
         rightLeg,
         walkTimer: Math.random() * 10,
+        footstepTimer: Math.random() * 0.35,
       };
 
       this.bots.push(bot);
@@ -341,6 +344,7 @@ export class BotManager {
   public update(
     dt: number,
     playerPos: THREE.Vector3,
+    playerYaw: number,
     playerHealth: number,
     isPlayerKnocked: boolean,
     safeCenterX: number,
@@ -372,6 +376,8 @@ export class BotManager {
 
     for (let i = 0; i < activeBots.length; i++) {
       const bot = activeBots[i];
+      const prevBotX = bot.position.x;
+      const prevBotZ = bot.position.z;
 
       const worldY = resolveWorldHeight(bot.position, getTerrainHeight, this.worldBuilder.colliders);
       const terrainY = getTerrainHeight(bot.position.x, bot.position.z);
@@ -683,6 +689,7 @@ export class BotManager {
           bot.state = 'patrolling';
           bot.stateTimer = 4;
         }
+        this.processBotFootstep(bot, dt, playerPos, playerYaw, true);
         continue;
       }
 
@@ -773,64 +780,96 @@ export class BotManager {
         if (bot.reactionTimer > 0) {
           bot.reactionTimer -= dt;
         } else if (distToEnemy < 95 && !isInside) {
-          // PRO PLAYER CONTINUOUS AUTO-MODE FIRING STREAM
+          // ACCURATE AIM & 4-5 BULLET BURST FIRING
           if (bot.burstCount > 0) {
             bot.burstTimer -= dt;
             if (bot.burstTimer <= 0) {
-              // FIRE SINGLE ROUND IN CONTINUOUS STREAM
               bot.burstCount--;
-              bot.burstTimer = 0.12; // Beautiful rhythmic automatic sniper streams!
-              
-              // Automatically replenish burst count to maintain absolute continuous shooting stream
-              if (bot.burstCount <= 1) {
-                bot.burstCount = 15;
-              }
-              
+              bot.burstTimer = 0.11; // 0.11s burst fire rate (~550 RPM authentic AR cadence)
+
               sound.playGunshot(bot.weapon, true, distToPlayer);
               this.onSoundMade(bot.position, 'gunshot');
               this.notifySoundFired(bot.position, bot.id);
- 
+
               if (bot.targetEnemy === 'player') {
                 const bEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
                 const pTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
                 const pEyePos = new THREE.Vector3(playerPos.x, playerPos.y + pTargetHeight, playerPos.z);
                 const hasSight = checkLineOfSight(bEyePos, pEyePos, this.worldBuilder.colliders);
-                
                 const isPlayerInside = isPositionInsideBuilding(playerPos, this.worldBuilder.colliders);
+
                 if (hasSight && !isPlayerInside) {
-                  // Standard hit chance for balanced tactical full-auto snipers
-                  const hitChance = Math.max(0.12, 0.32 - distToEnemy * 0.002);
-                  if (Math.random() < hitChance) {
-                    const rawDmg = 25; // Exactly 25 damage per shot so it takes exactly 4 bullets to kill the player at 100 HP!
+                  // ACCURATE AIM:
+                  // Deadly accurate aim when player is exposed:
+                  // < 35m: 95% accuracy
+                  // 35m - 65m: 90% accuracy
+                  // 65m - 95m: 82% accuracy
+                  let hitChance = 0.95;
+                  if (distToEnemy > 65) {
+                    hitChance = 0.82;
+                  } else if (distToEnemy > 35) {
+                    hitChance = 0.90;
+                  }
+
+                  const isHit = Math.random() < hitChance;
+                  const targetHitPos = isHit
+                    ? pEyePos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.35, (Math.random() - 0.5) * 0.25))
+                    : pEyePos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2.2));
+
+                  const botMuzzle = bot.position.clone().add(new THREE.Vector3(
+                    Math.sin(bot.rotationY + 0.25) * 0.55,
+                    1.35,
+                    Math.cos(bot.rotationY + 0.25) * 0.55
+                  ));
+
+                  if (this.onBulletTracer) {
+                    this.onBulletTracer(botMuzzle, targetHitPos, isHit);
+                  }
+
+                  if (isHit) {
+                    // Enemies hit player for 25 base damage: exactly 4-5 bullets knock down 100 HP!
+                    const rawDmg = 25;
                     onPlayerDamage(rawDmg, bot.name, bot.weapon);
                   }
                 } else {
-                  bot.burstCount = 0; // stop shooting if blocked or inside building!
+                  // Obstacle in between: lost line of sight, pause firing
+                  bot.burstCount = 0;
+                  bot.shootCooldown = 0.9;
                 }
               } else {
-                // Bot vs Bot fight (Continuous mode)
+                // Bot vs Bot fight (disciplined burst)
                 const otherBot = activeBots.find(b => b.id === bot.targetEnemy);
                 if (otherBot) {
                   const hasSight = checkLineOfSight(bot.position, otherBot.position, this.worldBuilder.colliders);
                   if (hasSight) {
-                    const dmgPerShot = 25; // Exactly 25 damage per shot for intense bot battles
+                    const botMuzzle = bot.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+                    const otherTarget = otherBot.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                    if (this.onBulletTracer) {
+                      this.onBulletTracer(botMuzzle, otherTarget, true);
+                    }
+                    const dmgPerShot = 25; // 4-5 bullets to knock down other bot
                     const result = this.damageBot(otherBot.id, dmgPerShot, Math.random() > 0.85, bot.name, bot.weaponDef.name);
                     if (result.isDead) {
                       bot.kills++;
-                      bot.health = 100; // Restore health to full 100 HP upon surviving a bot kill!
+                      bot.health = 100;
                       bot.state = 'looting';
                       bot.stateTimer = 4;
                       bot.burstCount = 0;
                     }
                   } else {
-                    bot.burstCount = 0; // stop shooting if blocked
+                    bot.burstCount = 0;
                   }
                 }
               }
+
+              // After firing 4-5 bullets in the burst, pause for tactical strafe / jiggle peek
+              if (bot.burstCount <= 0) {
+                bot.shootCooldown = 0.95 + Math.random() * 0.35;
+              }
             }
           } else if (bot.shootCooldown <= 0) {
-            // Start continuous auto stream!
-            bot.burstCount = 20;
+            // Start a disciplined 4-5 bullet burst!
+            bot.burstCount = Math.random() < 0.5 ? 4 : 5;
             bot.burstTimer = 0;
           }
         }
@@ -908,6 +947,55 @@ export class BotManager {
           bot.leftLeg.rotation.x = 0;
           bot.rightLeg.rotation.x = 0;
         }
+      }
+
+      // 8. 3D Positional Footsteps for Bot Movement
+      const movedDist = Math.hypot(bot.position.x - prevBotX, bot.position.z - prevBotZ);
+      if (movedDist > 0.03 * dt && bot.state !== 'dead') {
+        const isSprinting = (movedDist / dt) > 7.0;
+        this.processBotFootstep(bot, dt, playerPos, playerYaw, isSprinting);
+      }
+    }
+  }
+
+  /**
+   * Process rhythmic 3D positional footsteps for nearby enemy bots
+   */
+  private processBotFootstep(
+    bot: BotInstance,
+    dt: number,
+    playerPos: THREE.Vector3,
+    playerYaw: number,
+    isSprinting: boolean
+  ): void {
+    const stepCadence = isSprinting ? 0.32 : 0.46;
+    bot.footstepTimer -= dt;
+
+    if (bot.footstepTimer <= 0) {
+      bot.footstepTimer = stepCadence + (Math.random() - 0.5) * 0.04;
+
+      const dist = bot.position.distanceTo(playerPos);
+      if (dist <= 38.0) {
+        // Calculate relative direction and stereo pan relative to player's look direction
+        const toBotX = bot.position.x - playerPos.x;
+        const toBotZ = bot.position.z - playerPos.z;
+        const worldAngle = Math.atan2(toBotX, toBotZ);
+        let relAngle = worldAngle - playerYaw;
+        while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+        while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+        const pan = Math.sin(relAngle);
+        const isBehind = Math.cos(relAngle) < 0;
+
+        // Surface detection: concrete if inside/near building, else grass
+        const isNearBuilding = isPositionInsideBuilding(bot.position, this.worldBuilder.colliders);
+        const surface = isNearBuilding ? 'concrete' : 'grass';
+
+        // 1. Play 3D positional footstep sound with distance attenuation & stereo panning
+        sound.playPositionalFootstep(dist, pan, surface, isSprinting, isBehind);
+
+        // 2. Emit sound cue for HUD radar & minimap
+        this.onSoundMade(bot.position, 'footstep');
       }
     }
   }

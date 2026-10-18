@@ -153,30 +153,16 @@ export const FullMapModal: React.FC<FullMapModalProps> = ({
       ctx.fill();
     });
 
-    // 10. Radar Bots (Enemies and Teammates)
+    // 10. Friendly Squadmates only (Enemies are NOT shown on map for realistic scouting)
     radarBots.forEach((rb) => {
+      if (!rb.isTeammate) return;
       const rx = toCanvasX(rb.x);
       const rz = toCanvasZ(rb.z);
       
-      ctx.fillStyle = rb.isTeammate ? '#22c55e' : (rb.isKnocked ? '#f87171' : '#ef4444');
+      ctx.fillStyle = rb.isKnocked ? '#f59e0b' : '#22c55e';
       ctx.beginPath();
-      if (rb.isTeammate) {
-        ctx.arc(rx, rz, 4.5, 0, Math.PI * 2);
-      } else {
-        // Diamond for enemies
-        ctx.moveTo(rx, rz - 4.5);
-        ctx.lineTo(rx + 4.5, rz);
-        ctx.lineTo(rx, rz + 4.5);
-        ctx.lineTo(rx - 4.5, rz);
-        ctx.closePath();
-      }
+      ctx.arc(rx, rz, 4.5, 0, Math.PI * 2);
       ctx.fill();
-
-      if (!rb.isTeammate && rb.isKnocked) {
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
     });
 
     // 11. Player Marker (Bright green directional triangle)
@@ -236,10 +222,6 @@ export const FullMapModal: React.FC<FullMapModalProps> = ({
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span>You/Teammate</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rotate-45 bg-red-600" />
-            <span>Enemy</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-0.5 border-t border-dashed border-white" />

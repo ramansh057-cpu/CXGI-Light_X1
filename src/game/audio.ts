@@ -224,7 +224,7 @@ class SoundEngine {
     osc.stop(t + 0.12);
   }
 
-  // Footsteps
+  // Footsteps (Player local)
   public playFootstep(surface: 'grass' | 'road' | 'water' = 'grass') {
     this.resume();
     if (!this.ctx || !this.masterGain) return;
@@ -237,14 +237,14 @@ class SoundEngine {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(280, t);
       osc.frequency.exponentialRampToValueAtTime(90, t + 0.06);
-      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.setValueAtTime(0.12 * this.volume, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
     } else {
       // Grass / dirt soft crunch
       osc.type = 'sine';
       osc.frequency.setValueAtTime(140 + Math.random() * 30, t);
       osc.frequency.exponentialRampToValueAtTime(45, t + 0.07);
-      gain.gain.setValueAtTime(0.1, t);
+      gain.gain.setValueAtTime(0.1 * this.volume, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
     }
 
@@ -252,6 +252,125 @@ class SoundEngine {
     gain.connect(this.masterGain);
     osc.start(t);
     osc.stop(t + 0.08);
+  }
+
+  /**
+   * Dynamic 3D Positional Footstep Audio Engine
+   * Positional audio for nearby enemy bots:
+   * - Stereo Panning (Web Audio API StereoPannerNode) based on relative angle to player look
+   * - Inverse-distance volume attenuation (loud within 5-12m, audibility falls off to 38m)
+   * - Lowpass acoustic dampening for sounds behind the player (head shadow effect)
+   * - Realistic dual-layer boot thud + surface texture noise
+   */
+  public playPositionalFootstep(
+    distance: number,
+    pan: number,
+    surface: 'grass' | 'road' | 'dirt' | 'concrete' | 'wood' = 'grass',
+    isSprinting = false,
+    isBehind = false
+  ) {
+    if (distance > 38 || distance < 0) return;
+    this.resume();
+    if (!this.ctx || !this.masterGain) return;
+
+    const t = this.ctx.currentTime;
+
+    // 1. Distance attenuation: punchy up close, smoothly decays up to 38m
+    const normDist = Math.max(0, Math.min(1, distance / 38));
+    const distGain = Math.pow(1 - normDist, 1.35);
+    const speedMultiplier = isSprinting ? 1.35 : 1.0;
+    const finalVolume = Math.max(0.015, Math.min(0.52, distGain * speedMultiplier * 0.4 * this.volume));
+
+    // 2. Stereo Panning via Web Audio API
+    let pannerNode: StereoPannerNode | null = null;
+    const clampedPan = Math.max(-1, Math.min(1, pan));
+    if (typeof this.ctx.createStereoPanner === 'function') {
+      try {
+        pannerNode = this.ctx.createStereoPanner();
+        pannerNode.pan.setValueAtTime(clampedPan, t);
+      } catch {
+        pannerNode = null;
+      }
+    }
+
+    // 3. Lowpass filter for head-shadow & environmental acoustic dampening
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    const baseCutoff = isBehind ? 1600 : 3800;
+    const distCutoff = Math.max(750, baseCutoff * (1 - normDist * 0.45));
+    filter.frequency.setValueAtTime(distCutoff, t);
+
+    // 4. Master footstep envelope
+    const footstepGain = this.ctx.createGain();
+    footstepGain.gain.setValueAtTime(finalVolume, t);
+    footstepGain.gain.exponentialRampToValueAtTime(0.001, t + (isSprinting ? 0.08 : 0.07));
+
+    // 5. Layer A: Low-end sole impact thud
+    const thudOsc = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+
+    if (surface === 'road' || surface === 'concrete') {
+      thudOsc.type = 'triangle';
+      thudOsc.frequency.setValueAtTime(260 + Math.random() * 30, t);
+      thudOsc.frequency.exponentialRampToValueAtTime(70, t + 0.055);
+      thudGain.gain.setValueAtTime(0.65, t);
+      thudGain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+    } else {
+      // Grass / Dirt
+      thudOsc.type = 'sine';
+      thudOsc.frequency.setValueAtTime(145 + Math.random() * 25, t);
+      thudOsc.frequency.exponentialRampToValueAtTime(45, t + 0.07);
+      thudGain.gain.setValueAtTime(0.55, t);
+      thudGain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    }
+
+    // Layer B: Surface texture noise burst (gravel crunch, shoe scuff, grass rustle)
+    const noiseLen = 0.055;
+    const bufferSize = Math.floor(this.ctx.sampleRate * noiseLen);
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+    }
+
+    const noiseSource = this.ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    if (surface === 'road' || surface === 'concrete') {
+      noiseFilter.frequency.setValueAtTime(1900, t);
+      noiseFilter.Q.setValueAtTime(1.8, t);
+    } else {
+      noiseFilter.frequency.setValueAtTime(800 + Math.random() * 200, t);
+      noiseFilter.Q.setValueAtTime(1.2, t);
+    }
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.32, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+
+    // Audio graph wiring:
+    thudOsc.connect(thudGain);
+    thudGain.connect(filter);
+
+    noiseSource.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(filter);
+
+    filter.connect(footstepGain);
+
+    if (pannerNode) {
+      footstepGain.connect(pannerNode);
+      pannerNode.connect(this.masterGain);
+    } else {
+      footstepGain.connect(this.masterGain);
+    }
+
+    thudOsc.start(t);
+    noiseSource.start(t);
+    thudOsc.stop(t + 0.08);
+    noiseSource.stop(t + 0.065);
   }
 
   // Reload sound

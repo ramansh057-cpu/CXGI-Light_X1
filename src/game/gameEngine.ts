@@ -119,6 +119,9 @@ export class GameEngine {
   private fppBobTimer = 0;
   private muzzleFlashLight!: THREE.PointLight;
 
+  // Visual bullet tracers
+  private activeTracers: { line: THREE.Line; life: number }[] = [];
+
   public inventory: InventoryState = {
     ammo: {
       '5.56mm': 999,
@@ -204,6 +207,9 @@ export class GameEngine {
       (item) => this.callbacks.onKillFeed(item),
       (pos, type) => this.handleSoundIndicator(pos, type)
     );
+    this.botManager.onBulletTracer = (from, to, isHit) => {
+      this.spawnTracer(from, to, isHit ? 0xff4433 : 0xffcc33);
+    };
     this.squadManager = new SquadManager(
       this.scene,
       this.botManager,
@@ -250,6 +256,18 @@ export class GameEngine {
     this.muzzleFlashLight = new THREE.PointLight(0xffaa33, 0, 10);
     this.camera.add(this.muzzleFlashLight);
     this.scene.add(this.camera);
+  }
+
+  public spawnTracer(start: THREE.Vector3, end: THREE.Vector3, color = 0xffcc33): void {
+    const geom = new THREE.BufferGeometry().setFromPoints([start.clone(), end.clone()]);
+    const mat = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const line = new THREE.Line(geom, mat);
+    this.scene.add(line);
+    this.activeTracers.push({ line, life: 0.08 });
   }
 
   public applyGraphicSettings(newSettings: GraphicSettings): void {
@@ -751,6 +769,7 @@ export class GameEngine {
     this.botManager.update(
       dt,
       this.playerPos,
+      this.cameraYaw,
       this.playerHealth,
       this.isPlayerKnocked,
       this.safeZone.centerX,
@@ -809,6 +828,18 @@ export class GameEngine {
 
     // 14. Contextual Prompts
     this.updateInteractionPrompts();
+
+    // 15. Active Bullet Tracers
+    for (let i = this.activeTracers.length - 1; i >= 0; i--) {
+      const tr = this.activeTracers[i];
+      tr.life -= dt;
+      if (tr.life <= 0) {
+        this.scene.remove(tr.line);
+        tr.line.geometry.dispose();
+        (tr.line.material as THREE.Material).dispose();
+        this.activeTracers.splice(i, 1);
+      }
+    }
   }
 
   private updateGroundMovement(dt: number): void {
@@ -1012,6 +1043,15 @@ export class GameEngine {
         sound.playImpact('dirt');
       }
     }
+
+    // Spawn player bullet tracer
+    const startTracer = this.camera.position.clone().add(
+      new THREE.Vector3(0.18, -0.15, -0.4).applyEuler(new THREE.Euler(this.cameraPitch, this.cameraYaw, 0, 'YXZ'))
+    );
+    const endTracer = closestBot
+      ? closestBot.bot.position.clone().add(new THREE.Vector3(0, closestBot.isHeadshot ? 1.6 : 1.1, 0))
+      : (closestWallDist < weapon.range ? intersectPoint : this.camera.position.clone().add(raycaster.ray.direction.clone().multiplyScalar(Math.min(120, weapon.range))));
+    this.spawnTracer(startTracer, endTracer, 0xffd54f);
   }
 
   private meleeSwing(): void {
@@ -1130,8 +1170,9 @@ export class GameEngine {
 
   public damagePlayer(rawDamage: number, attackerName: string, weapon: WeaponId): void {
     if (this.playerHealth <= 0 && this.isPlayerKnocked) {
-      // 4-5 bullets to finish off knocked player
-      this.playerKnockedHealth -= rawDamage;
+      // Exactly 4-5 bullets to finish off knocked player (100 HP / ~22.5 dmg = 4.44 bullets)
+      const finishDmg = Math.max(20, Math.min(25, rawDamage));
+      this.playerKnockedHealth -= finishDmg;
       sound.playImpact('flesh');
       if (this.playerKnockedHealth <= 0 || this.squadManager.getAliveTeammatesCount() === 0) {
         this.handlePlayerDeath(attackerName);
@@ -1142,9 +1183,20 @@ export class GameEngine {
     if (this.playerHealth <= 0) return;
 
     let dmg = rawDamage;
-    if (this.inventory.armorLevel === 3) dmg *= 0.5;
-    else if (this.inventory.armorLevel === 2) dmg *= 0.65;
-    else if (this.inventory.armorLevel === 1) dmg *= 0.75;
+    // Calibrate damage mitigation across all armor tiers so enemies reliably knock player down in strictly 4-5 bullets:
+    // None armor: 25.0 dmg -> 4 bullets (100 HP)
+    // Level 1:    24.5 dmg -> 4-5 bullets (4 * 24.5 = 98 HP, 5th knocks)
+    // Level 2:    22.5 dmg -> 5 bullets (4 * 22.5 = 90 HP, 5th knocks)
+    // Level 3:    20.5 dmg -> 5 bullets (4 * 20.5 = 82 HP, 5th knocks)
+    if (this.inventory.armorLevel === 3) {
+      dmg = 20.5;
+    } else if (this.inventory.armorLevel === 2) {
+      dmg = 22.5;
+    } else if (this.inventory.armorLevel === 1) {
+      dmg = 24.5;
+    } else {
+      dmg = 25.0;
+    }
 
     this.playerHealth = Math.max(0, this.playerHealth - dmg);
     this.callbacks.onHealthChange(this.playerHealth, this.playerBoost);
@@ -1395,17 +1447,24 @@ export class GameEngine {
   private handleSoundIndicator(pos: THREE.Vector3, type: 'gunshot' | 'footstep'): void {
     const toSound = new THREE.Vector3().subVectors(pos, this.playerPos);
     const dist = toSound.length();
-    if (dist < 2.0 || dist > 260) return;
+    const maxDist = type === 'footstep' ? 38 : 260;
+    if (dist < 1.0 || dist > maxDist) return;
 
     const angleToSound = Math.atan2(toSound.x, toSound.z);
-    const relAngle = angleToSound - this.cameraYaw;
+    let relAngle = angleToSound - this.cameraYaw;
+    while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+    while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+    const worldBearing = Math.round(((-angleToSound * 180) / Math.PI + 360) % 360);
 
     this.callbacks.onSoundIndicator({
       id: `snd_${Date.now()}_${Math.random()}`,
       type,
       angle: relAngle,
-      intensity: Math.max(0.3, 1 - dist / 260),
-      expiresAt: Date.now() + 2500,
+      distance: Math.round(dist),
+      worldBearing,
+      intensity: Math.max(0.25, 1 - dist / maxDist),
+      expiresAt: Date.now() + (type === 'footstep' ? 1400 : 2500),
     });
   }
 

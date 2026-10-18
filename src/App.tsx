@@ -145,24 +145,16 @@ export default function App() {
           yaw: engineRef.current.cameraYaw,
         });
 
-        // Collect nearby bot and teammate info for Radar (exclude in_plane where meshes are hidden)
-        // REVEAL GLOBAL ENEMIES: Bypasses the 180m distance filter when 5 or fewer enemies remain!
-        const enemiesAlive = engineRef.current.botManager.getAliveCount();
-        const globalRadarReveal = enemiesAlive <= 5;
-
-        const bots = engineRef.current.botManager.bots
-          .filter(b => b.state !== 'dead' && b.state !== 'in_plane' && (globalRadarReveal || b.position.distanceTo(engineRef.current!.playerPos) < 180))
-          .map(b => ({
-            id: b.id,
-            x: b.position.x,
-            z: b.position.z,
-            isKnocked: b.state === 'knocked',
-            isTeammate: false,
-          }));
-        
+        // Realistic enemy scouting: enemies are NOT displayed on the radar/map!
+        // Players must realistically spot enemies visually and listen to positional audio.
         const teammates = engineRef.current.squadManager.teammates
-          .filter(tm => tm.state !== 'dead' && tm.state !== 'in_plane' && tm.position.distanceTo(engineRef.current!.playerPos) < 180)
-          .map(tm => ({
+          .filter(
+            (tm) =>
+              tm.state !== 'dead' &&
+              tm.state !== 'in_plane' &&
+              tm.position.distanceTo(engineRef.current!.playerPos) < 180
+          )
+          .map((tm) => ({
             id: tm.member.id,
             x: tm.position.x,
             z: tm.position.z,
@@ -170,10 +162,19 @@ export default function App() {
             isTeammate: true,
           }));
 
-        setRadarBots([...bots, ...teammates]);
+        setRadarBots(teammates);
         setIsScoping(engineRef.current.isScoping);
         setIsPointerLocked(engineRef.current.isPointerLocked);
         setRespawnChances(engineRef.current.respawnChances);
+
+        // Clean up expired sound cues
+        setSoundIndicators((prev) => {
+          const now = Date.now();
+          if (prev.length > 0 && prev.some((i) => i.expiresAt <= now)) {
+            return prev.filter((i) => i.expiresAt > now);
+          }
+          return prev;
+        });
       }
     }, 66);
 

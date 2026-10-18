@@ -15,7 +15,7 @@ interface MinimapProps {
   playerYaw: number;
   safeZone: SafeZoneState;
   vehicles: VehicleInstance[];
-  soundIndicators: SoundIndicator[];
+  soundIndicators?: SoundIndicator[];
   radarBots: RadarBotInfo[];
   onOpenFullMap: () => void;
 }
@@ -54,18 +54,19 @@ export const Minimap: React.FC<MinimapProps> = ({
     ctx.arc(center, center, center - 2, 0, Math.PI * 2);
     ctx.clip();
 
-    // Background terrain representation (dark tactical military radar)
+    // Background terrain representation (topographic GPS)
     ctx.fillStyle = '#1c241e';
     ctx.fillRect(0, 0, size, size);
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    // Clean subtle tactical GPS grid (No radar range rings)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
     ctx.lineWidth = 1;
-    for (let r = 40; r < viewRadiusMeters; r += 40) {
-      ctx.beginPath();
-      ctx.arc(center, center, r * scale, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(0, center);
+    ctx.lineTo(size, center);
+    ctx.moveTo(center, 0);
+    ctx.lineTo(center, size);
+    ctx.stroke();
 
     // Transform world coordinates relative to player
     // Blue Zone
@@ -104,46 +105,18 @@ export const Minimap: React.FC<MinimapProps> = ({
       }
     });
 
-    // Sound Indicators (gunshots / footsteps on perimeter)
-    const now = Date.now();
-    soundIndicators.forEach((si) => {
-      if (si.expiresAt > now) {
-        const angle = si.angle - Math.PI / 2;
-        const arcR = center - 8;
-        ctx.strokeStyle = si.type === 'gunshot' ? '#ef4444' : '#f97316';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(center, center, arcR, angle - 0.25, angle + 0.25);
-        ctx.stroke();
-      }
-    });
-
-    // Radar Bots (Enemies and Teammates)
+    // Friendly Squadmates only (Enemies are strictly NOT tracked on radar/map)
     radarBots.forEach((rb) => {
+      if (!rb.isTeammate) return;
       const rx = (rb.x - playerX) * scale;
       const rz = (rb.z - playerZ) * scale;
       const dist = Math.hypot(rx, rz);
 
       if (dist < center - 4) {
-        ctx.fillStyle = rb.isTeammate ? '#22c55e' : (rb.isKnocked ? '#f87171' : '#ef4444');
+        ctx.fillStyle = rb.isKnocked ? '#f59e0b' : '#22c55e';
         ctx.beginPath();
-        if (rb.isTeammate) {
-          ctx.arc(center + rx, center + rz, 3.5, 0, Math.PI * 2);
-        } else {
-          // Diamond for enemies
-          ctx.moveTo(center + rx, center + rz - 3.5);
-          ctx.lineTo(center + rx + 3.5, center + rz);
-          ctx.lineTo(center + rx, center + rz + 3.5);
-          ctx.lineTo(center + rx - 3.5, center + rz);
-          ctx.closePath();
-        }
+        ctx.arc(center + rx, center + rz, 3.5, 0, Math.PI * 2);
         ctx.fill();
-
-        if (!rb.isTeammate && rb.isKnocked) {
-          ctx.strokeStyle = 'white';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
       }
     });
 
@@ -170,7 +143,7 @@ export const Minimap: React.FC<MinimapProps> = ({
     ctx.beginPath();
     ctx.arc(center, center, center - 1, 0, Math.PI * 2);
     ctx.stroke();
-  }, [playerX, playerZ, playerYaw, safeZone, vehicles, soundIndicators, radarBots]);
+  }, [playerX, playerZ, playerYaw, safeZone, vehicles, radarBots]);
 
   // Calculate distance to safe circle boundary
   const distToSafeCenter = Math.hypot(playerX - safeZone.targetCenterX, playerZ - safeZone.targetCenterZ);
@@ -187,7 +160,7 @@ export const Minimap: React.FC<MinimapProps> = ({
         <span className="text-[10px] text-amber-400">{distToSafeEdge}m</span>
       </div>
 
-      {/* Circular Radar Minimap */}
+      {/* Tactical GPS Minimap */}
       <div
         onClick={onOpenFullMap}
         title="Click to view 1000m Tactical Map (M)"
@@ -196,7 +169,7 @@ export const Minimap: React.FC<MinimapProps> = ({
         <canvas ref={canvasRef} width={136} height={136} className="w-full h-full rounded-full" />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-full transition-opacity">
           <span className="text-[10px] font-mono text-amber-300 font-semibold tracking-wider">
-            [M] EXPAND
+            [M] 1000m MAP
           </span>
         </div>
       </div>

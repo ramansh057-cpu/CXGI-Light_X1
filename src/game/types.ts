@@ -200,7 +200,9 @@ export interface InventoryState {
 export interface SoundIndicator {
   id: string;
   type: 'gunshot' | 'footstep' | 'vehicle';
-  angle: number; // direction relative to player look
+  angle: number; // direction relative to player look (-PI to PI, 0 is center/forward)
+  distance?: number; // distance in meters from player
+  worldBearing?: number; // 0 to 360 degrees world compass heading
   intensity: number;
   expiresAt: number;
 }
@@ -281,6 +283,7 @@ export interface GraphicSettings {
   targetFps: 30 | 60 | 0; // 0 for uncapped
   drawDistance: 350 | 600 | 900;
   showTouchControls: boolean;
+  showMinimap: boolean; // Clean GPS minimap (no radar/enemy markers) or hidden for hardcore
   mouseSensitivity: number;
   invertMouseY: boolean;
   masterVolume: number;
@@ -292,6 +295,7 @@ export const DEFAULT_GRAPHIC_SETTINGS: GraphicSettings = {
   targetFps: 60,
   drawDistance: 600,
   showTouchControls: false,
+  showMinimap: true,
   mouseSensitivity: 1.0,
   invertMouseY: false,
   masterVolume: 0.8,

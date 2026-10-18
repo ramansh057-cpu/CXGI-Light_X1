@@ -18,7 +18,7 @@ import {
 } from '../game/types';
 import { Minimap } from './Minimap';
 import { ScopeOverlay } from './ScopeOverlay';
-import { Shield, HardHat, Skull, Users, HeartPulse, Zap, Settings as SettingsIcon, Map as MapIcon, Crosshair, UserCheck, AlertTriangle, ArrowUpDown } from 'lucide-react';
+import { Shield, HardHat, Skull, Users, HeartPulse, Zap, Settings as SettingsIcon, Map as MapIcon, Crosshair, UserCheck, AlertTriangle, ArrowUpDown, Compass, Eye, EyeOff } from 'lucide-react';
 import { VehicleInstance } from '../game/worldBuilder';
 
 interface HUDProps {
@@ -48,6 +48,7 @@ interface HUDProps {
   onUseConsumable: (type: ConsumableType) => void;
   onJump?: () => void;
   onToggleInvertMouse?: () => void;
+  onToggleMinimap?: () => void;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -77,6 +78,7 @@ export const HUD: React.FC<HUDProps> = ({
   onUseConsumable,
   onJump,
   onToggleInvertMouse,
+  onToggleMinimap,
 }) => {
   const activeSlot = inventory.activeSlot;
   const activeWeaponId = activeSlot === 1 ? inventory.weapon1 : activeSlot === 2 ? inventory.weapon2 : inventory.melee;
@@ -94,6 +96,9 @@ export const HUD: React.FC<HUDProps> = ({
   const distToZoneCenter = Math.hypot(playerX - safeZone.centerX, playerZ - safeZone.centerZ);
   const isOutsideBlue = distToZoneCenter > safeZone.blueRadius;
 
+  // Compass degrees
+  const currentDeg = Math.round(((-playerYaw * 180) / Math.PI + 360) % 360);
+
   // Hitmarker fade out
   const [showHitmarker, setShowHitmarker] = useState(false);
   useEffect(() => {
@@ -104,11 +109,29 @@ export const HUD: React.FC<HUDProps> = ({
     }
   }, [hitmarker]);
 
+  // Damage flash when player takes bullet hits
+  const [damageFlash, setDamageFlash] = useState(false);
+  const prevHealthRef = React.useRef(playerHealth);
+  useEffect(() => {
+    if (playerHealth < prevHealthRef.current && playerHealth > 0) {
+      setDamageFlash(true);
+      const timer = setTimeout(() => setDamageFlash(false), 240);
+      prevHealthRef.current = playerHealth;
+      return () => clearTimeout(timer);
+    }
+    prevHealthRef.current = playerHealth;
+  }, [playerHealth]);
+
   return (
     <div className="absolute inset-0 pointer-events-none select-none overflow-hidden font-sans">
       {/* 1. Outside Blue Zone Vignette Glow */}
       {isOutsideBlue && (
         <div className="absolute inset-0 pointer-events-none z-10 border-[16px] md:border-[28px] border-blue-500/30 shadow-[inset_0_0_80px_rgba(59,130,246,0.6)] animate-pulse" />
+      )}
+
+      {/* 1b. Hit Damage Vignette (Red flash on being hit by enemy bullets) */}
+      {damageFlash && (
+        <div className="absolute inset-0 pointer-events-none z-12 border-[16px] md:border-[24px] border-red-600/70 shadow-[inset_0_0_100px_rgba(239,68,68,0.7)] animate-out fade-out duration-200" />
       )}
 
       {/* 1b. Player Knocked Down Vignette */}
@@ -172,6 +195,8 @@ export const HUD: React.FC<HUDProps> = ({
           )}
         </div>
       )}
+
+
 
       {/* 4. Top Header Bar */}
       <div className="absolute top-3 inset-x-4 flex items-start justify-between z-20">
@@ -258,29 +283,102 @@ export const HUD: React.FC<HUDProps> = ({
           </div>
         </div>
 
-        {/* Center: Blue Zone Countdown Banner */}
-        <div className="flex flex-col items-center">
-          <div
-            className={`px-4 py-1.5 rounded-lg backdrop-blur-md border font-mono text-xs shadow-lg flex items-center gap-2 ${
-              safeZone.isShrinking
-                ? 'bg-blue-950/80 border-blue-500/80 text-blue-200 animate-pulse'
-                : 'bg-black/60 border-white/10 text-stone-200'
-            }`}
-          >
-            <div className={`w-2 h-2 rounded-full ${safeZone.isShrinking ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-            <span>
-              {safeZone.isShrinking ? 'PLAYZONE SHRINKING' : `NEXT PLAYZONE IN ${zoneTimeFormatted}`}
-            </span>
-            <span className="text-[10px] text-stone-400">· Phase {safeZone.phase}/{safeZone.totalPhases}</span>
+        {/* Center: Tactical Horizontal Compass Tape + Blue Zone Banner */}
+        <div className="flex flex-col items-center gap-1.5">
+          {/* Tactical Compass Tape (BGMI / PUBG style with directional sound cues) */}
+          <div className="relative w-64 md:w-80 h-7 rounded-lg bg-black/75 backdrop-blur-md border border-white/15 shadow-xl flex items-center justify-center overflow-hidden px-4">
+            {/* Center Heading Reticle */}
+            <div className="absolute top-0 bottom-0 w-0.5 bg-amber-400 z-10 shadow-[0_0_6px_#f59e0b]" />
+            <div className="absolute top-0 w-2 h-1 bg-amber-400 z-10 rounded-b-sm" />
+
+            {/* Compass Tape Labels */}
+            <div className="relative w-full h-full flex items-center justify-center font-mono text-[10px] select-none">
+              {[-60, -45, -30, -15, 0, 15, 30, 45, 60].map((offset) => {
+                const tickBearing = (currentDeg + offset + 360) % 360;
+                let label = `${tickBearing}`;
+                let isCardinal = false;
+                if (tickBearing === 0 || tickBearing === 360) {
+                  label = 'N';
+                  isCardinal = true;
+                } else if (tickBearing === 45) {
+                  label = 'NE';
+                  isCardinal = true;
+                } else if (tickBearing === 90) {
+                  label = 'E';
+                  isCardinal = true;
+                } else if (tickBearing === 135) {
+                  label = 'SE';
+                  isCardinal = true;
+                } else if (tickBearing === 180) {
+                  label = 'S';
+                  isCardinal = true;
+                } else if (tickBearing === 225) {
+                  label = 'SW';
+                  isCardinal = true;
+                } else if (tickBearing === 270) {
+                  label = 'W';
+                  isCardinal = true;
+                } else if (tickBearing === 315) {
+                  label = 'NW';
+                  isCardinal = true;
+                }
+
+                const xPercent = 50 + (offset / 60) * 45;
+
+                return (
+                  <div
+                    key={offset}
+                    style={{ left: `${xPercent}%` }}
+                    className="absolute -translate-x-1/2 flex flex-col items-center pointer-events-none"
+                  >
+                    <div
+                      className={`w-[1px] ${
+                        offset === 0 ? 'h-0' : isCardinal ? 'h-2 bg-amber-300' : 'h-1.5 bg-white/30'
+                      }`}
+                    />
+                    <span
+                      className={`text-[9px] font-bold ${
+                        offset === 0
+                          ? 'text-amber-400 text-[11px] drop-shadow-[0_0_4px_#f59e0b]'
+                          : isCardinal
+                          ? 'text-amber-300'
+                          : 'text-stone-400'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+
+            </div>
           </div>
+
+          {/* Blue Zone Banner */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`px-3 py-1 rounded-lg backdrop-blur-md border font-mono text-xs shadow-lg flex items-center gap-2 ${
+                safeZone.isShrinking
+                  ? 'bg-blue-950/80 border-blue-500/80 text-blue-200 animate-pulse'
+                  : 'bg-black/60 border-white/10 text-stone-200'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${safeZone.isShrinking ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+              <span>
+                {safeZone.isShrinking ? 'PLAYZONE SHRINKING' : `NEXT PLAYZONE IN ${zoneTimeFormatted}`}
+              </span>
+              <span className="text-[10px] text-stone-400">· Phase {safeZone.phase}/{safeZone.totalPhases}</span>
+            </div>
+          </div>
+
           {isOutsideBlue && (
-            <div className="mt-1 px-2.5 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-mono font-bold tracking-wider animate-bounce shadow-md">
+            <div className="mt-0.5 px-2.5 py-0.5 rounded bg-red-600/90 text-white text-[10px] font-mono font-bold tracking-wider animate-bounce shadow-md">
               WARNING: YOU ARE OUTSIDE PLAYZONE!
             </div>
           )}
         </div>
 
-        {/* Right: Minimap & Quick Control Buttons */}
+        {/* Right: Tactical Minimap & Quick Control Buttons */}
         <div className="flex items-start gap-2">
           {/* Quick buttons */}
           <div className="flex flex-col gap-2 pointer-events-auto">
@@ -303,25 +401,56 @@ export const HUD: React.FC<HUDProps> = ({
               <ArrowUpDown className="w-4 h-4" />
             </button>
             <button
+              onClick={onToggleMinimap}
+              title={`Minimap: ${settings.showMinimap !== false ? 'Shown (Clean GPS) - Click to Hide' : 'Hidden (Hardcore) - Click to Show'} - Press [N]`}
+              className={`p-2 rounded-lg backdrop-blur-md border transition-colors shadow-lg flex items-center justify-center ${
+                settings.showMinimap !== false
+                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-300'
+                  : 'bg-black/60 hover:bg-stone-800 border-white/10 text-stone-400'
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+            </button>
+            <button
               onClick={onOpenMap}
-              title="1000m Map (M)"
+              title="1000m Tactical Map (M)"
               className="p-2 rounded-lg bg-black/60 hover:bg-stone-800 backdrop-blur-md border border-white/10 text-amber-400 transition-colors shadow-lg"
             >
               <MapIcon className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Minimap */}
-          <Minimap
-            playerX={playerX}
-            playerZ={playerZ}
-            playerYaw={playerYaw}
-            safeZone={safeZone}
-            vehicles={vehicles}
-            soundIndicators={soundIndicators}
-            radarBots={radarBots}
-            onOpenFullMap={onOpenMap}
-          />
+          {/* Minimap (Pure GPS mode or Hardcore Compact Status) */}
+          {settings.showMinimap !== false ? (
+            <Minimap
+              playerX={playerX}
+              playerZ={playerZ}
+              playerYaw={playerYaw}
+              safeZone={safeZone}
+              vehicles={vehicles}
+              radarBots={radarBots}
+              onOpenFullMap={onOpenMap}
+            />
+          ) : (
+            <div
+              onClick={onOpenMap}
+              className="cursor-pointer group flex flex-col items-end gap-1.5 p-2.5 rounded-lg bg-black/70 hover:bg-stone-900/90 backdrop-blur-md border border-white/15 text-stone-200 shadow-xl transition-all select-none"
+              title="Minimap Hidden (Hardcore Mode). Click or press [M] to open 1000m Map"
+            >
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <Compass className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform" />
+                <span className="font-bold text-emerald-400">
+                  {currentDeg >= 338 || currentDeg < 23 ? 'N' : currentDeg < 68 ? 'NE' : currentDeg < 113 ? 'E' : currentDeg < 158 ? 'SE' : currentDeg < 203 ? 'S' : currentDeg < 248 ? 'SW' : currentDeg < 293 ? 'W' : 'NW'} {currentDeg}°
+                </span>
+                <span className="text-amber-400 font-bold">
+                  {Math.max(0, Math.round(Math.hypot(playerX - safeZone.targetCenterX, playerZ - safeZone.targetCenterZ) - safeZone.targetRadius))}m
+                </span>
+              </div>
+              <div className="text-[10px] font-mono text-stone-400 group-hover:text-amber-300 transition-colors">
+                HARDCORE · [M] MAP · [N] GPS
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

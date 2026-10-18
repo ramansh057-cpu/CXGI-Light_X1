@@ -229,6 +229,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Dynamic 3D Audio Engine & Visual Sound Cues */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-stone-950/70 border border-amber-500/30 shadow-md">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="text-xs font-semibold text-amber-300">
+                  Dynamic 3D Positional Audio & Visual Sound Cues
+                </div>
+              </div>
+              <div className="text-[11px] text-stone-400 mt-0.5">
+                Spatial stereo panning & distance attenuation for enemy footsteps · 360° HUD threat radar
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                sound.resume();
+                sound.playPositionalFootstep(8, 0.75, 'concrete', false, false);
+              }}
+              className="px-2.5 py-1.5 text-xs font-mono rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 transition-colors"
+            >
+              Test Spatial Audio
+            </button>
+          </div>
+
           {/* Mouse Vertical Look Direction Toggle (Invert Mouse Y) */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-stone-950/60 border border-stone-800">
             <div>
