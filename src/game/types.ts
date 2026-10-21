@@ -279,7 +279,7 @@ export interface SafeZoneState {
 
 export interface GraphicSettings {
   shadowMode: 'simple_blob' | 'directional_fast' | 'off';
-  renderScale: 0.5 | 0.65 | 0.75 | 1.0;
+  renderScale: 0.35 | 0.5 | 0.65 | 0.75 | 1.0;
   targetFps: 30 | 60 | 0; // 0 for uncapped
   drawDistance: 350 | 600 | 900;
   showTouchControls: boolean;
@@ -298,7 +298,7 @@ const isTouchDevice =
 
 export const DEFAULT_GRAPHIC_SETTINGS: GraphicSettings = {
   shadowMode: 'simple_blob', // default to ultra-light blob shadows for older laptops
-  renderScale: 0.65, // Little bit more pixelated for older laptops to lock 60 FPS
+  renderScale: 0.35, // Lower resolution for vintage pixel look and high performance
   targetFps: 60, // Locked to 60 FPS
   drawDistance: 600,
   showTouchControls: isTouchDevice,

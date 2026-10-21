@@ -20,10 +20,9 @@ import {
 import { HUD } from './components/HUD';
 import { FullMapModal } from './components/FullMapModal';
 import { InventoryModal } from './components/InventoryModal';
-import { SettingsModal } from './components/SettingsModal';
 import { GameOverModal } from './components/GameOverModal';
 import { TouchControls } from './components/TouchControls';
-import { Play, Laptop, ShieldCheck, MapPin, Crosshair, Users, Sliders, Volume2, UserCheck } from 'lucide-react';
+import { Play, Laptop, Smartphone, ShieldCheck, MapPin, Crosshair, Users, Volume2, UserCheck } from 'lucide-react';
 import bgmiCoverArt from './assets/images/bgmi_cover_art_1790771276444.jpg';
 
 export default function App() {
@@ -34,7 +33,6 @@ export default function App() {
   // App state
   const [inGame, setInGame] = useState(false);
   const [settings, setSettings] = useState<GraphicSettings>(DEFAULT_GRAPHIC_SETTINGS);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFullMap, setShowFullMap] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(() => {
@@ -101,8 +99,15 @@ export default function App() {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [respawnChances, setRespawnChances] = useState(2);
 
-  // Start Match
-  const handleStartGame = () => {
+  // Start Match with Device Choice (Laptop User vs Mobile User)
+  const handleStartGame = (isMobile: boolean) => {
+    setSettings((prev) => {
+      const updated = { ...prev, showTouchControls: isMobile };
+      if (engineRef.current) {
+        engineRef.current.applyGraphicSettings(updated);
+      }
+      return updated;
+    });
     setInGame(true);
     setGameOverStats(null);
   };
@@ -204,12 +209,11 @@ export default function App() {
         e.preventDefault();
         setShowInventory((prev) => !prev);
       } else if (e.code === 'Escape') {
-        if (showFullMap || showInventory || showSettingsModal) {
+        if (showFullMap || showInventory) {
           setShowFullMap(false);
           setShowInventory(false);
-          setShowSettingsModal(false);
         } else {
-          setShowSettingsModal(true);
+          engine.exitPointerLock();
         }
       }
     };
@@ -283,15 +287,11 @@ export default function App() {
               </span>
             </nav>
 
-            {/* Zone 3: Primary Action */}
+            {/* Zone 3: Empty space (no settings) */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="px-3 py-1.5 text-xs font-mono rounded-lg bg-stone-900/80 hover:bg-stone-800 border border-stone-700 text-stone-200 transition-colors flex items-center gap-1.5"
-              >
-                <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                <span>Graphics Presets</span>
-              </button>
+              <span className="text-xs font-mono text-amber-400/90 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/30">
+                Low-Res Performance Mode
+              </span>
             </div>
           </header>
 
@@ -300,7 +300,7 @@ export default function App() {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Optimized for Intel HD & Dual-Core Older Laptops</span>
+                <span>Optimized Low Resolution (Ultra Fast 60 FPS)</span>
               </div>
 
               <h1 className="text-4xl md:text-6xl font-extrabold text-stone-100 tracking-tight leading-tight font-sans">
@@ -310,24 +310,68 @@ export default function App() {
 
               <p className="text-sm md:text-base text-stone-300 leading-relaxed max-w-xl">
                 Experience full-scale tactical battle royale in Pure First-Person Perspective (FPP).
-                Watch enemies parachute out of the C-130 airplane across the 1000m island, enjoy natural
-                simple mouse controls with zero lag, and drive tactical UAZs — engineered for smooth 60 FPS on older laptops.
+                Choose your device below to automatically configure optimal controls for your play session.
               </p>
 
-              {/* Start Button */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                <button
-                  onClick={handleStartGame}
-                  className="py-4 px-8 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-base tracking-wider uppercase flex items-center justify-center gap-3 shadow-xl shadow-amber-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                >
-                  <Play className="w-5 h-5 fill-current" />
-                  <span>Start Match (Drop In)</span>
-                </button>
+              {/* Two Options: Laptop User vs Mobile User */}
+              <div className="pt-4 space-y-3">
+                <div className="text-xs font-mono text-stone-400 uppercase tracking-wider">
+                  Select your device to play:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Laptop User Option */}
+                  <button
+                    onClick={() => handleStartGame(false)}
+                    className="p-5 rounded-2xl bg-stone-900/90 hover:bg-stone-800 border-2 border-amber-500/60 hover:border-amber-400 text-left transition-all transform hover:-translate-y-1 shadow-xl group cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform">
+                          <Laptop className="w-6 h-6" />
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                          Keyboard & Mouse
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-amber-300 transition-colors">
+                        Laptop User
+                      </h3>
+                      <p className="text-xs text-stone-400 leading-relaxed">
+                        WASD move, mouse look, left-click shoot, right-click ADS scope, pointer lock enabled.
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-stone-800 flex items-center gap-2 text-xs font-mono font-bold text-amber-400">
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Start as Laptop User</span>
+                    </div>
+                  </button>
 
-                <div className="text-xs font-mono text-stone-400">
-                  <div>View: <strong className="text-amber-400">Pure FPP (First Person)</strong></div>
-                  <div>Shadow: <strong className="text-amber-400">{settings.shadowMode === 'simple_blob' ? 'Simple Shadow (Fast)' : 'Directional'}</strong></div>
-                  <div>Map: <strong className="text-stone-200">1000m x 1000m Island</strong></div>
+                  {/* Mobile User Option */}
+                  <button
+                    onClick={() => handleStartGame(true)}
+                    className="p-5 rounded-2xl bg-stone-900/90 hover:bg-stone-800 border-2 border-sky-500/60 hover:border-sky-400 text-left transition-all transform hover:-translate-y-1 shadow-xl group cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2.5 rounded-xl bg-sky-500/20 text-sky-400 group-hover:scale-110 transition-transform">
+                          <Smartphone className="w-6 h-6" />
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-300 border border-sky-500/30">
+                          Touch Controls
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-sky-300 transition-colors">
+                        Mobile User
+                      </h3>
+                      <p className="text-xs text-stone-400 leading-relaxed">
+                        On-screen virtual joystick, dual drag-to-aim fire buttons, touch aim & scope triggers.
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-stone-800 flex items-center gap-2 text-xs font-mono font-bold text-sky-400">
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Start as Mobile User</span>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -390,7 +434,6 @@ export default function App() {
             squad={squad}
             radarBots={radarBots}
             respawnChances={respawnChances}
-            onOpenSettings={() => setShowSettingsModal(true)}
             onOpenMap={() => setShowFullMap(true)}
             onOpenInventory={() => setShowInventory(true)}
             onSwitchSlot={(slot) => engineRef.current?.switchWeaponSlot(slot)}
@@ -416,7 +459,7 @@ export default function App() {
           />
 
           {/* Pointer Lock Helper Prompt for Laptops & Desktops only (bypassed on phones/touchscreens) */}
-          {!isPointerLocked && !isTouchDevice && !settings.showTouchControls && !showFullMap && !showInventory && !showSettingsModal && !gameOverStats && (
+          {!isPointerLocked && !isTouchDevice && !settings.showTouchControls && !showFullMap && !showInventory && !gameOverStats && (
             <div
               onClick={() => engineRef.current?.requestPointerLock()}
               className="absolute inset-0 z-25 flex items-center justify-center bg-black/55 backdrop-blur-[3px] cursor-pointer"
@@ -441,7 +484,7 @@ export default function App() {
                   <div><span className="text-amber-400 font-bold">TAB</span> : Bag / Inventory</div>
                 </div>
                 <div className="text-[10px] text-amber-300/90 font-mono">
-                  Press [ESC] at any time to release mouse or open settings
+                  Press [ESC] at any time to release mouse cursor
                 </div>
               </div>
             </div>
@@ -452,7 +495,6 @@ export default function App() {
             <TouchControls
               engine={engineRef.current}
               isDriving={engineRef.current?.gamePhase === 'driving'}
-              onOpenSettings={() => setShowSettingsModal(true)}
             />
           )}
 
@@ -480,18 +522,6 @@ export default function App() {
                 engineRef.current?.switchWeaponSlot(slot);
               }}
               onClose={() => setShowInventory(false)}
-            />
-          )}
-
-          {/* Settings & Optimization Modal */}
-          {showSettingsModal && (
-            <SettingsModal
-              settings={settings}
-              onUpdateSettings={handleUpdateSettings}
-              onClose={() => {
-                setShowSettingsModal(false);
-                engineRef.current?.requestPointerLock();
-              }}
             />
           )}
 

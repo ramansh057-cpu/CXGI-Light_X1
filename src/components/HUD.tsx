@@ -41,7 +41,6 @@ interface HUDProps {
   squad: SquadMember[];
   radarBots: RadarBotInfo[];
   respawnChances: number;
-  onOpenSettings: () => void;
   onOpenMap: () => void;
   onOpenInventory: () => void;
   onSwitchSlot: (slot: 1 | 2 | 3) => void;
@@ -71,7 +70,6 @@ export const HUD: React.FC<HUDProps> = ({
   squad,
   radarBots,
   respawnChances,
-  onOpenSettings,
   onOpenMap,
   onOpenInventory,
   onSwitchSlot,
@@ -382,13 +380,6 @@ export const HUD: React.FC<HUDProps> = ({
         <div className="flex items-start gap-2">
           {/* Quick buttons */}
           <div className="flex flex-col gap-2 pointer-events-auto">
-            <button
-              onClick={onOpenSettings}
-              title="Settings & Optimization (ESC)"
-              className="p-2 rounded-lg bg-black/60 hover:bg-stone-800 backdrop-blur-md border border-white/10 text-stone-300 transition-colors shadow-lg"
-            >
-              <SettingsIcon className="w-4 h-4" />
-            </button>
             <button
               onClick={onToggleInvertMouse}
               title={`Vertical Look: ${settings.invertMouseY ? 'Inverted (Mouse Up = Look Down)' : 'Standard (Mouse Up = Look Up)'} - Press [Y]`}
