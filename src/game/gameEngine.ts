@@ -982,43 +982,77 @@ export class GameEngine {
       }
     }
 
-    let closestBot: { bot: any; dist: number; isHeadshot: boolean } | null = null;
+    let closestHit: {
+      bot: any;
+      dist: number;
+      isHeadshot: boolean;
+      hitPart: string;
+      damageMultiplier: number;
+    } | null = null;
 
     for (const bot of this.botManager.bots) {
       if (bot.state === 'dead' || bot.state === 'in_plane') continue;
 
-      const botCenter = bot.position.clone().add(new THREE.Vector3(0, 1.0, 0));
-      const headCenter = bot.position.clone().add(new THREE.Vector3(0, 1.6, 0));
+      const headCenter = bot.position.clone().add(new THREE.Vector3(0, 2.1, 0));
+      const torsoCenter = bot.position.clone().add(new THREE.Vector3(0, 1.3, 0));
+      const limbsCenter = bot.position.clone().add(new THREE.Vector3(0, 0.6, 0));
 
-      const distRayToBody = raycaster.ray.distanceToPoint(botCenter);
-      const distRayToHead = raycaster.ray.distanceToPoint(headCenter);
-      const hitDist = raycaster.ray.origin.distanceTo(botCenter);
+      const distHead = raycaster.ray.distanceToPoint(headCenter);
+      const distTorso = raycaster.ray.distanceToPoint(torsoCenter);
+      const distLimbs = raycaster.ray.distanceToPoint(limbsCenter);
+      const hitDist = raycaster.ray.origin.distanceTo(torsoCenter);
 
-      // Generous casual-friendly hit tolerances!
-      if (distRayToHead < 0.55 && hitDist < weapon.range && hitDist < closestWallDist) {
-        if (!closestBot || hitDist < closestBot.dist) {
-          closestBot = { bot, dist: hitDist, isHeadshot: true };
+      if (hitDist < weapon.range && hitDist < closestWallDist) {
+        let hitPart = '';
+        let isHeadshot = false;
+        let dmgMult = 1.0;
+
+        if (distHead < 0.8) {
+          hitPart = 'Head / Helmet';
+          isHeadshot = true;
+          dmgMult = 2.6;
+        } else if (distTorso < 1.3) {
+          hitPart = 'Torso / Vest';
+          isHeadshot = false;
+          dmgMult = 1.4;
+        } else if (distLimbs < 1.4) {
+          hitPart = 'Limbs / Lower Body';
+          isHeadshot = false;
+          dmgMult = 1.0;
         }
-      } else if (distRayToBody < 0.95 && hitDist < weapon.range && hitDist < closestWallDist) {
-        if (!closestBot || hitDist < closestBot.dist) {
-          closestBot = { bot, dist: hitDist, isHeadshot: false };
+
+        if (hitPart && (!closestHit || hitDist < closestHit.dist)) {
+          closestHit = {
+            bot,
+            dist: hitDist,
+            isHeadshot,
+            hitPart,
+            damageMultiplier: dmgMult,
+          };
         }
       }
     }
 
-    if (closestBot) {
-      sound.playHitmarker(closestBot.isHeadshot);
-      this.playerDamageDealt += weapon.damage * (closestBot.isHeadshot ? 2.6 : 1.2);
+    if (closestHit) {
+      sound.playHitmarker(closestHit.isHeadshot);
+      const finalDmg = Math.round(weapon.damage * closestHit.damageMultiplier);
+      this.playerDamageDealt += finalDmg;
 
       const result = this.botManager.damageBot(
-        closestBot.bot.id,
-        weapon.damage,
-        closestBot.isHeadshot,
+        closestHit.bot.id,
+        finalDmg,
+        closestHit.isHeadshot,
         'You',
         weapon.name
       );
 
-      this.callbacks.onHitmarker(closestBot.isHeadshot, result.isDead);
+      this.callbacks.onHitmarker(closestHit.isHeadshot, result.isDead);
+
+      // HIT TEST DEBUG LOG & ON-SCREEN NOTIFICATION
+      const testMsg = `[HIT TEST] Target: ${closestHit.bot.name} | Body Part: ${closestHit.hitPart} | Dist: ${Math.round(closestHit.dist)}m | Dmg: ${finalDmg}`;
+      console.log(testMsg);
+      this.callbacks.onPromptChange(testMsg);
+      setTimeout(() => this.callbacks.onPromptChange(null), 2500);
 
       if (result.isDead) {
         this.playerKills++;
