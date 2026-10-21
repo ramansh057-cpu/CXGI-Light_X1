@@ -463,6 +463,25 @@ export class GameEngine {
     this.isPointerLocked = document.pointerLockElement === this.container;
   };
 
+  public rotateCamera(deltaX: number, deltaY: number, isFiringDrag: boolean = false): void {
+    const touchMult = this.settings.touchSensitivity ?? 1.8;
+    const scopeMult = this.settings.touchScopeSensitivity ?? 1.2;
+    const fireMult = this.settings.touchFireSensitivity ?? 1.5;
+
+    let sens = 0.0055 * touchMult;
+    if (this.isScoping) {
+      sens *= scopeMult * 0.55;
+    } else if (isFiringDrag) {
+      sens *= fireMult * 0.9;
+    }
+
+    const invertFactor = this.settings.invertMouseY ? -1 : 1;
+
+    this.cameraYaw -= deltaX * sens;
+    this.cameraPitch -= deltaY * sens * invertFactor;
+    this.cameraPitch = Math.max(-1.48, Math.min(1.48, this.cameraPitch));
+  }
+
   private handleMouseMove = (e: MouseEvent) => {
     if (!this.isPointerLocked) return;
     const sens = 0.0022 * this.settings.mouseSensitivity * (this.isScoping ? 0.45 : 1.0);
@@ -531,7 +550,7 @@ export class GameEngine {
     this.callbacks.onInventoryChange({ ...this.inventory });
   }
 
-  private handleInteract(): void {
+  public handleInteract(): void {
     if (this.gamePhase === 'driving') {
       const exitResult = this.vehicleController.exitVehicle();
       if (exitResult) {
@@ -625,7 +644,7 @@ export class GameEngine {
     this.callbacks.onInventoryChange({ ...this.inventory });
   }
 
-  private startReload(): void {
+  public startReload(): void {
     const activeWeapon = this.getActiveWeaponDef();
     if (!activeWeapon || !activeWeapon.ammoType || this.isReloading) return;
 

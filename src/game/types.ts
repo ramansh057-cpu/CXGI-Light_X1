@@ -285,18 +285,28 @@ export interface GraphicSettings {
   showTouchControls: boolean;
   showMinimap: boolean; // Clean GPS minimap (no radar/enemy markers) or hidden for hardcore
   mouseSensitivity: number;
+  touchSensitivity: number; // High responsiveness for mobile finger aiming
+  touchScopeSensitivity: number; // Precision sensitivity when ADS scoping on mobile
+  touchFireSensitivity: number; // Drag-to-aim recoil control sensitivity
   invertMouseY: boolean;
   masterVolume: number;
 }
+
+const isTouchDevice =
+  typeof window !== 'undefined' &&
+  (('ontouchstart' in window) || (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0)));
 
 export const DEFAULT_GRAPHIC_SETTINGS: GraphicSettings = {
   shadowMode: 'simple_blob', // default to ultra-light blob shadows for older laptops
   renderScale: 0.65, // Little bit more pixelated for older laptops to lock 60 FPS
   targetFps: 60, // Locked to 60 FPS
   drawDistance: 600,
-  showTouchControls: false,
+  showTouchControls: isTouchDevice,
   showMinimap: true,
   mouseSensitivity: 1.0,
+  touchSensitivity: 1.8, // Default high sensitivity on mobile for snappy turning & aiming
+  touchScopeSensitivity: 1.2, // Default ADS scope sensitivity
+  touchFireSensitivity: 1.5, // Default recoil drag-to-aim sensitivity
   invertMouseY: false,
   masterVolume: 0.8,
 };

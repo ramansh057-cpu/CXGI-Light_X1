@@ -37,6 +37,19 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFullMap, setShowFullMap] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(() => {
+    return typeof window !== 'undefined' && (('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0));
+  });
+
+  useEffect(() => {
+    const handleTouchDetect = () => {
+      setIsTouchDevice(true);
+      setSettings((prev) => (prev.showTouchControls ? prev : { ...prev, showTouchControls: true }));
+    };
+    window.addEventListener('touchstart', handleTouchDetect, { passive: true });
+    return () => window.removeEventListener('touchstart', handleTouchDetect);
+  }, []);
+
   const [gameOverStats, setGameOverStats] = useState<{
     isVictory: boolean;
     stats: { kills: number; damage: number; rank: number; survivalTime: number };
@@ -402,8 +415,8 @@ export default function App() {
             }}
           />
 
-          {/* Pointer Lock Helper Prompt for Laptops & Desktops */}
-          {!isPointerLocked && !showFullMap && !showInventory && !showSettingsModal && !gameOverStats && (
+          {/* Pointer Lock Helper Prompt for Laptops & Desktops only (bypassed on phones/touchscreens) */}
+          {!isPointerLocked && !isTouchDevice && !settings.showTouchControls && !showFullMap && !showInventory && !showSettingsModal && !gameOverStats && (
             <div
               onClick={() => engineRef.current?.requestPointerLock()}
               className="absolute inset-0 z-25 flex items-center justify-center bg-black/55 backdrop-blur-[3px] cursor-pointer"
@@ -434,11 +447,12 @@ export default function App() {
             </div>
           )}
 
-          {/* Optional On-Screen Touch Controls */}
-          {settings.showTouchControls && (
+          {/* On-Screen Touch Controls (Active on phones & touchscreens) */}
+          {(settings.showTouchControls || isTouchDevice) && (
             <TouchControls
               engine={engineRef.current}
               isDriving={engineRef.current?.gamePhase === 'driving'}
+              onOpenSettings={() => setShowSettingsModal(true)}
             />
           )}
 

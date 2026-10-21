@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { GraphicSettings } from '../game/types';
-import { X, Sliders, Monitor, Volume2, Gamepad2, Laptop } from 'lucide-react';
+import { X, Sliders, Monitor, Volume2, Gamepad2, Laptop, Smartphone, Crosshair } from 'lucide-react';
 import { sound } from '../game/audio';
 
 interface SettingsModalProps {
@@ -201,11 +201,121 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Audio & Mouse Sensitivity */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
+          {/* Mobile & Touch Sensitivity Customization */}
+          <div className="p-3.5 rounded-xl bg-stone-950/80 border border-amber-500/40 shadow-lg space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                  Mobile & Touchscreen Sensitivity
+                </span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">
+                HIGH BY DEFAULT
+              </span>
+            </div>
+
+            {/* Quick Sensitivity Presets */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { label: 'Low', touch: 1.0, scope: 0.8, fire: 1.0 },
+                { label: 'Medium', touch: 1.4, scope: 1.0, fire: 1.2 },
+                { label: 'High (Rec.)', touch: 1.8, scope: 1.2, fire: 1.5 },
+                { label: 'Ultra Fast', touch: 2.6, scope: 1.6, fire: 2.0 },
+              ].map((p) => {
+                const isActive = Math.abs((settings.touchSensitivity ?? 1.8) - p.touch) < 0.15;
+                return (
+                  <button
+                    key={p.label}
+                    onClick={() =>
+                      onUpdateSettings({
+                        ...settings,
+                        touchSensitivity: p.touch,
+                        touchScopeSensitivity: p.scope,
+                        touchFireSensitivity: p.fire,
+                      })
+                    }
+                    className={`py-1.5 px-2 text-[11px] font-mono rounded-lg border transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-amber-500 text-stone-950 font-bold border-amber-300 shadow-md scale-[1.02]'
+                        : 'bg-stone-900 hover:bg-stone-800 text-stone-300 border-stone-800'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 1. Touch Camera Look Sensitivity */}
+            <div className="space-y-1">
+              <label className="text-xs text-stone-200 font-medium flex justify-between">
+                <span>Touch Camera Look Speed</span>
+                <span className="text-amber-400 font-mono font-bold text-[11px]">
+                  {(settings.touchSensitivity ?? 1.8).toFixed(1)}x {
+                    (settings.touchSensitivity ?? 1.8) >= 2.4 ? '(Ultra)' : (settings.touchSensitivity ?? 1.8) >= 1.7 ? '(High)' : '(Standard)'
+                  }
+                </span>
+              </label>
+              <input
+                type="range"
+                min="0.6"
+                max="3.5"
+                step="0.1"
+                value={settings.touchSensitivity ?? 1.8}
+                onChange={(e) => onUpdateSettings({ ...settings, touchSensitivity: parseFloat(e.target.value) })}
+                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-stone-800 rounded-lg"
+              />
+              <div className="text-[10px] text-stone-400 flex justify-between">
+                <span>Slow / Steady (0.6x)</span>
+                <span>Fast 180° / 360° Flick (3.5x)</span>
+              </div>
+            </div>
+
+            {/* 2. ADS Scope Zoom Sensitivity */}
+            <div className="space-y-1">
+              <label className="text-xs text-stone-200 font-medium flex justify-between">
+                <span>ADS Scope Zoom Sensitivity (Red Dot / 4x / 8x)</span>
+                <span className="text-amber-400 font-mono font-bold text-[11px]">
+                  {(settings.touchScopeSensitivity ?? 1.2).toFixed(1)}x
+                </span>
+              </label>
+              <input
+                type="range"
+                min="0.4"
+                max="2.5"
+                step="0.1"
+                value={settings.touchScopeSensitivity ?? 1.2}
+                onChange={(e) => onUpdateSettings({ ...settings, touchScopeSensitivity: parseFloat(e.target.value) })}
+                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-stone-800 rounded-lg"
+              />
+            </div>
+
+            {/* 3. Drag-to-Aim Recoil Sensitivity */}
+            <div className="space-y-1">
+              <label className="text-xs text-stone-200 font-medium flex justify-between">
+                <span>Fire Button Drag & Recoil Pull</span>
+                <span className="text-amber-400 font-mono font-bold text-[11px]">
+                  {(settings.touchFireSensitivity ?? 1.5).toFixed(1)}x
+                </span>
+              </label>
+              <input
+                type="range"
+                min="0.5"
+                max="3.0"
+                step="0.1"
+                value={settings.touchFireSensitivity ?? 1.5}
+                onChange={(e) => onUpdateSettings({ ...settings, touchFireSensitivity: parseFloat(e.target.value) })}
+                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-stone-800 rounded-lg"
+              />
+            </div>
+          </div>
+
+          {/* PC Mouse Sensitivity & Audio Volume */}
+          <div className="grid grid-cols-2 gap-4 pt-1">
             <div className="space-y-1.5">
               <label className="text-xs text-stone-300 font-medium flex justify-between">
-                <span>Mouse Sensitivity</span>
+                <span>PC Mouse Sensitivity</span>
                 <span className="text-stone-400 text-[11px]">{settings.mouseSensitivity.toFixed(1)}x</span>
               </label>
               <input
