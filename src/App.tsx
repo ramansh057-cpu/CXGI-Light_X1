@@ -102,7 +102,15 @@ export default function App() {
   // Start Match with Device Choice (Laptop User vs Mobile User)
   const handleStartGame = (isMobile: boolean) => {
     setSettings((prev) => {
-      const updated = { ...prev, showTouchControls: isMobile };
+      const updated = {
+        ...prev,
+        showTouchControls: isMobile,
+        ...(isMobile ? {
+          touchSensitivity: 2.5,
+          touchScopeSensitivity: 1.8,
+          touchFireSensitivity: 2.2,
+        } : {})
+      };
       if (engineRef.current) {
         engineRef.current.applyGraphicSettings(updated);
       }
@@ -147,8 +155,9 @@ export default function App() {
         setGameOverStats({ isVictory, stats });
         if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
         lobbyTimerRef.current = setTimeout(() => {
-          handleRestartMatch();
-        }, 3000);
+          setGameOverStats(null);
+          setInGame(false);
+        }, 4000);
       },
       onPromptChange: (prompt) => {
         setInteractionPrompt(prompt);
@@ -235,13 +244,10 @@ export default function App() {
     }
   };
 
-  const handleRestartMatch = () => {
+  const handleReturnToLobby = () => {
     if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
     setGameOverStats(null);
-    if (engineRef.current) {
-      engineRef.current.restartMatch();
-      engineRef.current.requestPointerLock();
-    }
+    setInGame(false);
   };
 
   return (
@@ -530,7 +536,7 @@ export default function App() {
             <GameOverModal
               isVictory={gameOverStats.isVictory}
               stats={gameOverStats.stats}
-              onRestart={handleRestartMatch}
+              onRestart={handleReturnToLobby}
             />
           )}
         </>

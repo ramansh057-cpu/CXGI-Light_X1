@@ -113,11 +113,11 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           }`}
         >
           <RotateCcw className="w-4 h-4" />
-          <span>Deploy Again (Play Again)</span>
+          <span>Return to Lobby</span>
         </button>
 
         <div className="mt-3 text-xs font-mono text-stone-400">
-          Resetting match in <span className="text-amber-400 font-bold">{countdown}s</span>...
+          Returning to lobby in <span className="text-amber-400 font-bold">{countdown}s</span>...
         </div>
       </div>
     </div>
