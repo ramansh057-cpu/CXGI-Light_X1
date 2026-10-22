@@ -60,7 +60,7 @@ export default function App() {
   const [playerHealth, setPlayerHealth] = useState(100);
   const [playerBoost, setPlayerBoost] = useState(0);
   const [inventory, setInventory] = useState<InventoryState>({
-    ammo: { '5.56mm': 0, '7.62mm': 0, '300mag': 0, '12gauge': 0 },
+    ammo: { '7.62mm': 999 },
     consumables: { first_aid: 3, medkit: 2, energy_drink: 4, painkiller: 2, bandage: 10 },
     helmetLevel: 0,
     armorLevel: 0,
@@ -116,8 +116,14 @@ export default function App() {
       }
       return updated;
     });
-    setInGame(true);
+    setPlayerHealth(100);
+    setPlayerBoost(0);
+    setPlayerKills(0);
+    setAliveCount(41);
+    setKillFeed([]);
     setGameOverStats(null);
+    setRespawnChances(2);
+    setInGame(true);
   };
 
   // Initialize GameEngine when container is ready
@@ -155,8 +161,7 @@ export default function App() {
         setGameOverStats({ isVictory, stats });
         if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
         lobbyTimerRef.current = setTimeout(() => {
-          setGameOverStats(null);
-          setInGame(false);
+          window.location.reload();
         }, 4000);
       },
       onPromptChange: (prompt) => {
@@ -177,24 +182,7 @@ export default function App() {
           yaw: engineRef.current.cameraYaw,
         });
 
-        // Realistic enemy scouting: enemies are NOT displayed on the radar/map!
-        // Players must realistically spot enemies visually and listen to positional audio.
-        const teammates = engineRef.current.squadManager.teammates
-          .filter(
-            (tm) =>
-              tm.state !== 'dead' &&
-              tm.state !== 'in_plane' &&
-              tm.position.distanceTo(engineRef.current!.playerPos) < 180
-          )
-          .map((tm) => ({
-            id: tm.member.id,
-            x: tm.position.x,
-            z: tm.position.z,
-            isKnocked: tm.state === 'knocked',
-            isTeammate: true,
-          }));
-
-        setRadarBots(teammates);
+        setRadarBots([]);
         setIsScoping(engineRef.current.isScoping);
         setIsPointerLocked(engineRef.current.isPointerLocked);
         setRespawnChances(engineRef.current.respawnChances);
@@ -245,9 +233,7 @@ export default function App() {
   };
 
   const handleReturnToLobby = () => {
-    if (lobbyTimerRef.current) clearTimeout(lobbyTimerRef.current);
-    setGameOverStats(null);
-    setInGame(false);
+    window.location.reload();
   };
 
   return (

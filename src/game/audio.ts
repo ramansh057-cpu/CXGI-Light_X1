@@ -3,6 +3,8 @@
  * High fidelity, low CPU footprint, 0 external download delay.
  */
 
+import { WeaponId } from './types';
+
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -43,7 +45,7 @@ class SoundEngine {
   }
 
   // Gunshots
-  public playGunshot(type: 'm416' | 'akm' | 'awm' | 'kar98k' | 's12k' | 'pan', isEnemy = false, distance = 0) {
+  public playGunshot(type: WeaponId, isEnemy = false, distance = 0) {
     this.resume();
     if (!this.ctx || !this.masterGain) return;
 
@@ -52,26 +54,7 @@ class SoundEngine {
     const enemyDamping = isEnemy ? 0.7 : 1.0;
     const finalVolume = distGain * enemyDamping;
 
-    if (type === 'pan') {
-      // Resonant metal clang
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(840, t);
-      osc.frequency.exponentialRampToValueAtTime(320, t + 0.35);
-
-      gain.gain.setValueAtTime(0.5 * finalVolume, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.start(t);
-      osc.stop(t + 0.36);
-      return;
-    }
-
-    // Noise buffer for gunshot explosion crack
-    const bufferSize = this.ctx.sampleRate * (type === 'awm' ? 0.8 : type === 'akm' ? 0.45 : 0.3);
+    const bufferSize = this.ctx.sampleRate * (type === 'kar98k' ? 0.5 : 0.25);
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -83,69 +66,38 @@ class SoundEngine {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-
     const noiseGain = this.ctx.createGain();
 
-    // Bass punch oscillator
     const punchOsc = this.ctx.createOscillator();
     const punchGain = this.ctx.createGain();
 
-    if (type === 'awm') {
-      // Massive magnum sniper rifle thunder
-      filter.frequency.setValueAtTime(2600, t);
-      filter.frequency.exponentialRampToValueAtTime(400, t + 0.6);
+    if (type === 'kar98k') {
+      filter.frequency.setValueAtTime(3200, t);
+      filter.frequency.exponentialRampToValueAtTime(500, t + 0.45);
 
-      noiseGain.gain.setValueAtTime(0.9 * finalVolume, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+      noiseGain.gain.setValueAtTime(0.8 * finalVolume, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
 
       punchOsc.type = 'sawtooth';
-      punchOsc.frequency.setValueAtTime(150, t);
-      punchOsc.frequency.exponentialRampToValueAtTime(30, t + 0.4);
-
-      punchGain.gain.setValueAtTime(0.8 * finalVolume, t);
-      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-    } else if (type === 'akm') {
-      // Punchy 7.62 assault rifle
-      filter.frequency.setValueAtTime(3200, t);
-      filter.frequency.exponentialRampToValueAtTime(600, t + 0.4);
-
-      noiseGain.gain.setValueAtTime(0.7 * finalVolume, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-
-      punchOsc.type = 'triangle';
-      punchOsc.frequency.setValueAtTime(180, t);
-      punchOsc.frequency.exponentialRampToValueAtTime(45, t + 0.25);
-
-      punchGain.gain.setValueAtTime(0.6 * finalVolume, t);
-      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    } else if (type === 's12k') {
-      // Shotgun blast
-      filter.frequency.setValueAtTime(1800, t);
-      filter.frequency.exponentialRampToValueAtTime(350, t + 0.35);
-
-      noiseGain.gain.setValueAtTime(0.85 * finalVolume, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-
-      punchOsc.type = 'sine';
-      punchOsc.frequency.setValueAtTime(120, t);
-      punchOsc.frequency.exponentialRampToValueAtTime(35, t + 0.2);
+      punchOsc.frequency.setValueAtTime(140, t);
+      punchOsc.frequency.exponentialRampToValueAtTime(35, t + 0.3);
 
       punchGain.gain.setValueAtTime(0.7 * finalVolume, t);
-      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
     } else {
-      // M416 / Kar98k assault rifle / bolt rifle
-      filter.frequency.setValueAtTime(4000, t);
-      filter.frequency.exponentialRampToValueAtTime(800, t + 0.25);
+      // Revolver
+      filter.frequency.setValueAtTime(4500, t);
+      filter.frequency.exponentialRampToValueAtTime(1000, t + 0.2);
 
-      noiseGain.gain.setValueAtTime(0.65 * finalVolume, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      noiseGain.gain.setValueAtTime(0.6 * finalVolume, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
 
-      punchOsc.type = 'sine';
-      punchOsc.frequency.setValueAtTime(220, t);
-      punchOsc.frequency.exponentialRampToValueAtTime(60, t + 0.15);
+      punchOsc.type = 'triangle';
+      punchOsc.frequency.setValueAtTime(250, t);
+      punchOsc.frequency.exponentialRampToValueAtTime(80, t + 0.12);
 
       punchGain.gain.setValueAtTime(0.5 * finalVolume, t);
-      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
     }
 
     whiteNoise.connect(filter);

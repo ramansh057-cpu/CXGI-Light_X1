@@ -105,9 +105,9 @@ export const Minimap: React.FC<MinimapProps> = ({
       }
     });
 
-    // Friendly Squadmates only (Enemies are strictly NOT tracked on radar/map)
+    // Radar Blips: Only Friendly Squadmates in Green/Cyan (No Enemy Radar)
     radarBots.forEach((rb) => {
-      if (!rb.isTeammate) return;
+      if (!rb.isTeammate) return; // Enemy radar removed
       const rx = (rb.x - playerX) * scale;
       const rz = (rb.z - playerZ) * scale;
       const dist = Math.hypot(rx, rz);

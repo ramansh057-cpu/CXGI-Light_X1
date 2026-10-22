@@ -26,7 +26,13 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
   React.useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown((prev) => (prev > 1 ? prev - 1 : 0));
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          window.location.reload();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -105,7 +111,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
         {/* Action Button */}
         <button
-          onClick={onRestart}
+          onClick={() => window.location.reload()}
           className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg transition-all ${
             isVictory
               ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-amber-500/30'
@@ -113,11 +119,11 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           }`}
         >
           <RotateCcw className="w-4 h-4" />
-          <span>Return to Lobby</span>
+          <span>Reload & Play Again</span>
         </button>
 
         <div className="mt-3 text-xs font-mono text-stone-400">
-          Returning to lobby in <span className="text-amber-400 font-bold">{countdown}s</span>...
+          Reloading match in <span className="text-amber-400 font-bold">{countdown}s</span>...
         </div>
       </div>
     </div>

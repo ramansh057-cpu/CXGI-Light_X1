@@ -20,9 +20,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   onSwitchSlot,
   onClose,
 }) => {
-  const w1 = inventory.weapon1 ? WEAPON_DEFS[inventory.weapon1] : null;
-  const w2 = inventory.weapon2 ? WEAPON_DEFS[inventory.weapon2] : null;
-  const melee = inventory.melee ? WEAPON_DEFS[inventory.melee] : null;
+  const w1 = inventory.weapon1 && WEAPON_DEFS[inventory.weapon1] ? WEAPON_DEFS[inventory.weapon1] : null;
+  const w2 = inventory.weapon2 && WEAPON_DEFS[inventory.weapon2] ? WEAPON_DEFS[inventory.weapon2] : null;
+  const melee = inventory.melee && WEAPON_DEFS[inventory.melee] ? WEAPON_DEFS[inventory.melee] : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-150">
@@ -153,22 +153,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
             {/* Ammo Reserves */}
             <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider pt-2">Ammo Reserves</h3>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div className="grid grid-cols-1 gap-2 text-xs font-mono">
               <div className="p-2 rounded bg-stone-950/80 border border-stone-800 flex justify-between">
-                <span className="text-emerald-400">5.56mm</span>
-                <span className="font-semibold text-stone-100">{inventory.ammo['5.56mm']}</span>
-              </div>
-              <div className="p-2 rounded bg-stone-950/80 border border-stone-800 flex justify-between">
-                <span className="text-amber-400">7.62mm</span>
-                <span className="font-semibold text-stone-100">{inventory.ammo['7.62mm']}</span>
-              </div>
-              <div className="p-2 rounded bg-stone-950/80 border border-stone-800 flex justify-between">
-                <span className="text-sky-400">.300 Mag</span>
-                <span className="font-semibold text-stone-100">{inventory.ammo['300mag']}</span>
-              </div>
-              <div className="p-2 rounded bg-stone-950/80 border border-stone-800 flex justify-between">
-                <span className="text-red-400">12 Gauge</span>
-                <span className="font-semibold text-stone-100">{inventory.ammo['12gauge']}</span>
+                <span className="text-amber-400">7.62mm (Kar98k / Revolver)</span>
+                <span className="font-semibold text-stone-100">{inventory.ammo['7.62mm'] || 0}</span>
               </div>
             </div>
           </div>

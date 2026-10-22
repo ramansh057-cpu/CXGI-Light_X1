@@ -121,10 +121,7 @@ export class GameEngine {
 
   public inventory: InventoryState = {
     ammo: {
-      '5.56mm': 999,
       '7.62mm': 999,
-      '300mag': 0,
-      '12gauge': 0,
     },
     consumables: {
       first_aid: 3,
@@ -136,11 +133,11 @@ export class GameEngine {
     helmetLevel: 2,
     armorLevel: 2,
     backpackLevel: 2,
-    weapon1: 'm416',
-    weapon1Ammo: 30,
-    weapon2: null,
-    weapon2Ammo: 0,
-    melee: 'pan',
+    weapon1: 'kar98k',
+    weapon1Ammo: 5,
+    weapon2: 'revolver',
+    weapon2Ammo: 6,
+    melee: null,
     activeSlot: 1,
   };
 
@@ -597,26 +594,31 @@ export class GameEngine {
   private pickUpLoot(loot: LootItem): void {
     if (loot.type === 'weapon') {
       const wId = loot.itemId as WeaponId;
+      const def = WEAPON_DEFS[wId];
+      if (!def) return;
+
       if (!this.inventory.weapon1) {
         this.inventory.weapon1 = wId;
-        this.inventory.weapon1Ammo = WEAPON_DEFS[wId].magSize;
+        this.inventory.weapon1Ammo = def.magSize;
         this.inventory.activeSlot = 1;
       } else if (!this.inventory.weapon2) {
         this.inventory.weapon2 = wId;
-        this.inventory.weapon2Ammo = WEAPON_DEFS[wId].magSize;
+        this.inventory.weapon2Ammo = def.magSize;
         this.inventory.activeSlot = 2;
       } else {
         if (this.inventory.activeSlot === 1) {
           this.inventory.weapon1 = wId;
-          this.inventory.weapon1Ammo = WEAPON_DEFS[wId].magSize;
+          this.inventory.weapon1Ammo = def.magSize;
         } else {
           this.inventory.weapon2 = wId;
-          this.inventory.weapon2Ammo = WEAPON_DEFS[wId].magSize;
+          this.inventory.weapon2Ammo = def.magSize;
         }
       }
     } else if (loot.type === 'ammo') {
       const aType = loot.itemId as keyof InventoryState['ammo'];
-      this.inventory.ammo[aType] = (this.inventory.ammo[aType] || 0) + loot.amount;
+      if (aType in this.inventory.ammo) {
+        this.inventory.ammo[aType] = (this.inventory.ammo[aType] || 0) + loot.amount;
+      }
     } else if (loot.type === 'consumable') {
       const cType = loot.itemId as ConsumableType;
       this.inventory.consumables[cType] = (this.inventory.consumables[cType] || 0) + loot.amount;
@@ -662,7 +664,7 @@ export class GameEngine {
   public getActiveWeaponDef(): (typeof WEAPON_DEFS)[WeaponId] | null {
     const slot = this.inventory.activeSlot;
     const wId = slot === 1 ? this.inventory.weapon1 : slot === 2 ? this.inventory.weapon2 : this.inventory.melee;
-    return wId ? WEAPON_DEFS[wId] : null;
+    return (wId && WEAPON_DEFS[wId]) ? WEAPON_DEFS[wId] : null;
   }
 
   private startLoop(): void {
@@ -930,21 +932,13 @@ export class GameEngine {
     const active = this.getActiveWeaponDef();
     if (!active) return;
 
-    if (active.category === 'Melee') {
-      this.shootCooldown = 1.0 / active.fireRate;
-      sound.playGunshot('pan');
-      this.meleeSwing();
-      return;
-    }
-
     const currentAmmo = this.inventory.activeSlot === 1 ? this.inventory.weapon1Ammo : this.inventory.weapon2Ammo;
     if (currentAmmo <= 0) {
       this.startReload();
       return;
     }
 
-    // UNLIMITED AMMO: Active clip ammo never decreases when shooting, and reserve ammo types are locked to 999!
-    this.inventory.ammo['5.56mm'] = 999;
+    // UNLIMITED AMMO: Active clip ammo never decreases when shooting, and reserve ammo is locked to 999!
     this.inventory.ammo['7.62mm'] = 999;
     this.callbacks.onInventoryChange({ ...this.inventory });
 
@@ -1035,7 +1029,7 @@ export class GameEngine {
 
     if (closestHit) {
       sound.playHitmarker(closestHit.isHeadshot);
-      const finalDmg = Math.round(weapon.damage * closestHit.damageMultiplier);
+      const finalDmg = 100;
       this.playerDamageDealt += finalDmg;
 
       const result = this.botManager.damageBot(
@@ -1048,8 +1042,8 @@ export class GameEngine {
 
       this.callbacks.onHitmarker(closestHit.isHeadshot, result.isDead);
 
-      // HIT TEST DEBUG LOG & ON-SCREEN NOTIFICATION
-      const testMsg = `[HIT TEST] Target: ${closestHit.bot.name} | Body Part: ${closestHit.hitPart} | Dist: ${Math.round(closestHit.dist)}m | Dmg: ${finalDmg}`;
+      // 1-HIT ELIMINATION NOTIFICATION
+      const testMsg = `[1-HIT KILL] Target: ${closestHit.bot.name} | Body Part: ${closestHit.hitPart} | Dist: ${Math.round(closestHit.dist)}m`;
       console.log(testMsg);
       this.callbacks.onPromptChange(testMsg);
       setTimeout(() => this.callbacks.onPromptChange(null), 2500);
@@ -1183,47 +1177,16 @@ export class GameEngine {
   }
 
   public damagePlayer(rawDamage: number, attackerName: string, weapon: WeaponId): void {
-    if (this.playerHealth <= 0 && this.isPlayerKnocked) {
-      // Exactly 4-5 bullets to finish off knocked player (100 HP / ~22.5 dmg = 4.44 bullets)
-      const finishDmg = Math.max(20, Math.min(25, rawDamage));
-      this.playerKnockedHealth -= finishDmg;
-      sound.playImpact('flesh');
-      if (this.playerKnockedHealth <= 0 || this.squadManager.getAliveTeammatesCount() === 0) {
-        this.handlePlayerDeath(attackerName);
-      }
-      return;
-    }
-
     if (this.playerHealth <= 0) return;
 
-    let dmg = 20.0; // Exactly 5 hits to knock down player (100 HP / 20 = 5 hits)
-
+    // 4 HITS TO KILL: 25 HP damage per hit (100 HP / 25 = exactly 4 hits to kill)
+    const dmg = 25;
     this.playerHealth = Math.max(0, this.playerHealth - dmg);
     this.callbacks.onHealthChange(this.playerHealth, this.playerBoost);
     sound.playImpact('flesh');
 
     if (this.playerHealth <= 0) {
-      if (this.squadManager.getAliveTeammatesCount() > 0) {
-        this.isPlayerKnocked = true;
-        this.playerKnockedHealth = 100; // Takes 4-5 bullets to finish!
-        this.playerHealth = 0;
-        this.isScoping = false;
-        this.callbacks.onHealthChange(0, this.playerBoost);
-        this.callbacks.onPromptChange('YOU ARE KNOCKED DOWN! CRAWL TO COVER! SQUAD IS COMING TO REVIVE YOU!');
-        this.callbacks.onKillFeed({
-          id: `player_knock_${Date.now()}`,
-          killer: attackerName,
-          victim: 'You',
-          weapon: WEAPON_DEFS[weapon]?.name || 'Assault Rifle',
-          isHeadshot: false,
-          isPlayerKiller: false,
-          isPlayerVictim: true,
-          isKnockout: true,
-          timestamp: Date.now(),
-        });
-      } else {
-        this.handlePlayerDeath(attackerName);
-      }
+      this.handlePlayerDeath(attackerName);
     }
   }
 
@@ -1484,16 +1447,16 @@ export class GameEngine {
     this.playerPos.copy(this.planeMesh.position);
 
     this.inventory = {
-      ammo: { '5.56mm': 999, '7.62mm': 999, '300mag': 0, '12gauge': 0 },
+      ammo: { '7.62mm': 999 },
       consumables: { first_aid: 4, medkit: 2, energy_drink: 5, painkiller: 3, bandage: 6 },
       helmetLevel: 2,
       armorLevel: 2,
       backpackLevel: 2,
-      weapon1: 'm416',
-      weapon1Ammo: 30,
-      weapon2: null,
-      weapon2Ammo: 0,
-      melee: 'pan',
+      weapon1: 'kar98k',
+      weapon1Ammo: 5,
+      weapon2: 'revolver',
+      weapon2Ammo: 6,
+      melee: null,
       activeSlot: 1,
     };
 

@@ -81,6 +81,8 @@ export const HUD: React.FC<HUDProps> = ({
   const activeSlot = inventory.activeSlot;
   const activeWeaponId = activeSlot === 1 ? inventory.weapon1 : activeSlot === 2 ? inventory.weapon2 : inventory.melee;
   const activeDef = activeWeaponId ? WEAPON_DEFS[activeWeaponId] : null;
+  const w1Def = inventory.weapon1 ? WEAPON_DEFS[inventory.weapon1] : null;
+  const w2Def = inventory.weapon2 ? WEAPON_DEFS[inventory.weapon2] : null;
 
   const currentAmmo = activeSlot === 1 ? inventory.weapon1Ammo : activeSlot === 2 ? inventory.weapon2Ammo : 1;
   const reserveAmmo = activeDef?.ammoType ? inventory.ammo[activeDef.ammoType] || 0 : 0;
@@ -593,15 +595,15 @@ export const HUD: React.FC<HUDProps> = ({
           >
             <div className="flex items-center justify-between gap-3 text-[10px] font-mono">
               <span className="text-amber-400 font-bold">[1] PRIMARY</span>
-              <span>{inventory.weapon1 ? WEAPON_DEFS[inventory.weapon1].scopeType : 'None'}</span>
+              <span>{w1Def?.scopeType || 'None'}</span>
             </div>
             <div className="text-xs md:text-sm font-bold mt-0.5">
-              {inventory.weapon1 ? WEAPON_DEFS[inventory.weapon1].name : 'Empty'}
+              {w1Def?.name || 'Empty'}
             </div>
-            {inventory.weapon1 && (
+            {w1Def && (
               <div className="text-xs font-mono text-stone-300 mt-0.5">
                 <span className="text-amber-400 font-bold text-sm">{inventory.weapon1Ammo}</span>
-                <span className="text-stone-500"> / {WEAPON_DEFS[inventory.weapon1].magSize}</span>
+                <span className="text-stone-500"> / {w1Def.magSize}</span>
               </div>
             )}
           </button>
@@ -617,15 +619,15 @@ export const HUD: React.FC<HUDProps> = ({
           >
             <div className="flex items-center justify-between gap-3 text-[10px] font-mono">
               <span className="text-amber-400 font-bold">[2] SECONDARY</span>
-              <span>{inventory.weapon2 ? WEAPON_DEFS[inventory.weapon2].scopeType : 'None'}</span>
+              <span>{w2Def?.scopeType || 'None'}</span>
             </div>
             <div className="text-xs md:text-sm font-bold mt-0.5">
-              {inventory.weapon2 ? WEAPON_DEFS[inventory.weapon2].name : 'Empty'}
+              {w2Def?.name || 'Empty'}
             </div>
-            {inventory.weapon2 && (
+            {w2Def && (
               <div className="text-xs font-mono text-stone-300 mt-0.5">
                 <span className="text-amber-400 font-bold text-sm">{inventory.weapon2Ammo}</span>
-                <span className="text-stone-500"> / {WEAPON_DEFS[inventory.weapon2].magSize}</span>
+                <span className="text-stone-500"> / {w2Def.magSize}</span>
               </div>
             )}
           </button>

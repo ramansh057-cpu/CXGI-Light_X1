@@ -989,11 +989,11 @@ export class WorldBuilder {
    */
   private spawnInitialLoot(): void {
     const lootList: { type: LootItem['type']; itemId: any; name: string; amount: number; level?: number }[] = [
-      { type: 'weapon', itemId: 'm416', name: 'M416 Assault Rifle', amount: 1 },
-      { type: 'weapon', itemId: 'akm', name: 'AKM Assault Rifle', amount: 1 },
-      { type: 'weapon', itemId: 'm416', name: 'M416 Assault Rifle', amount: 1 },
-      { type: 'weapon', itemId: 'pan', name: 'Cast Iron Pan', amount: 1 },
-      { type: 'ammo', itemId: '5.56mm', name: '5.56mm Ammo (60)', amount: 60 },
+      { type: 'weapon', itemId: 'kar98k', name: 'Kar98k Sniper Rifle', amount: 1 },
+      { type: 'weapon', itemId: 'revolver', name: 'Revolver Sidearm', amount: 1 },
+      { type: 'weapon', itemId: 'kar98k', name: 'Kar98k Sniper Rifle', amount: 1 },
+      { type: 'weapon', itemId: 'revolver', name: 'Revolver Sidearm', amount: 1 },
+      { type: 'ammo', itemId: '7.62mm', name: '7.62mm Ammo (60)', amount: 60 },
       { type: 'ammo', itemId: '7.62mm', name: '7.62mm Ammo (60)', amount: 60 },
       { type: 'consumable', itemId: 'first_aid', name: 'First Aid Kit', amount: 2 },
       { type: 'consumable', itemId: 'medkit', name: 'Medkit', amount: 1 },
@@ -1232,10 +1232,10 @@ export class WorldBuilder {
 
     this.scene.add(crateGroup);
 
-    // Exclusive Airdrop Loot (AWM + Lv3 Gear + Ghillie)
+    // Exclusive Airdrop Loot (Kar98k + Lv3 Gear)
     const airdropLoot: LootItem[] = [
-      { id: `awm_${Date.now()}`, type: 'weapon', itemId: 'awm', name: 'AWM (.300 Magnum)', amount: 1, position: new THREE.Vector3(x, y, z) },
-      { id: `ammo300_${Date.now()}`, type: 'ammo', itemId: '300mag', name: '.300 Magnum Ammo (20)', amount: 20, position: new THREE.Vector3(x, y, z) },
+      { id: `kar98k_${Date.now()}`, type: 'weapon', itemId: 'kar98k', name: 'Kar98k Sniper Rifle', amount: 1, position: new THREE.Vector3(x, y, z) },
+      { id: `ammo762_${Date.now()}`, type: 'ammo', itemId: '7.62mm', name: '7.62mm Ammo (60)', amount: 60, position: new THREE.Vector3(x, y, z) },
       { id: `helmet3_${Date.now()}`, type: 'helmet', itemId: 'helmet_3', name: 'Spetsnaz Helmet (Lv3)', amount: 1, level: 3, position: new THREE.Vector3(x, y, z) },
       { id: `armor3_${Date.now()}`, type: 'armor', itemId: 'armor_3', name: 'Military Vest (Lv3)', amount: 1, level: 3, position: new THREE.Vector3(x, y, z) },
       { id: `medkit_${Date.now()}`, type: 'consumable', itemId: 'medkit', name: 'Medkit', amount: 2, position: new THREE.Vector3(x, y, z) },

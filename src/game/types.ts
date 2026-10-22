@@ -3,14 +3,14 @@
  * Map: 1000m x 1000m (-500 to +500)
  */
 
-export type WeaponId = 'm416' | 'akm' | 'awm' | 'kar98k' | 's12k' | 'pan';
+export type WeaponId = 'kar98k' | 'revolver';
 
-export type AmmoType = '5.56mm' | '7.62mm' | '300mag' | '12gauge';
+export type AmmoType = '7.62mm';
 
 export interface WeaponDef {
   id: WeaponId;
   name: string;
-  category: 'AR' | 'Sniper' | 'Shotgun' | 'Melee';
+  category: 'Sniper' | 'Pistol';
   ammoType?: AmmoType;
   magSize: number;
   damage: number;
@@ -20,70 +20,19 @@ export interface WeaponDef {
   recoilPitch: number;
   recoilYaw: number;
   bulletSpeed: number; // m/s
-  scopeType: 'red_dot' | '4x' | '8x' | 'iron';
+  scopeType: '4x' | 'iron';
   zoomFov: number; // camera FOV when scoping
   description: string;
 }
 
 export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
-  m416: {
-    id: 'm416',
-    name: 'M416',
-    category: 'AR',
-    ammoType: '5.56mm',
-    magSize: 30,
-    damage: 20, // Exactly 5 bullets to eliminate (100 HP / 20 = 5 hits)
-    fireRate: 11, // ~660 RPM
-    reloadTime: 2.1,
-    range: 300,
-    recoilPitch: 0.018,
-    recoilYaw: 0.009,
-    bulletSpeed: 880,
-    scopeType: '4x',
-    zoomFov: 32,
-    description: 'Versatile 5.56mm assault rifle. Takes exactly 5 accurate hits to knock/finish.',
-  },
-  akm: {
-    id: 'akm',
-    name: 'AKM',
-    category: 'AR',
-    ammoType: '7.62mm',
-    magSize: 30,
-    damage: 20, // Exactly 5 bullets to eliminate (100 HP / 20 = 5 hits)
-    fireRate: 9.5,
-    reloadTime: 2.4,
-    range: 280,
-    recoilPitch: 0.024,
-    recoilYaw: 0.014,
-    bulletSpeed: 715,
-    scopeType: 'red_dot',
-    zoomFov: 45,
-    description: 'Heavy 7.62mm assault rifle. Exactly 5 hits to eliminate.',
-  },
-  awm: {
-    id: 'awm',
-    name: 'AWM',
-    category: 'Sniper',
-    ammoType: '300mag',
-    magSize: 5,
-    damage: 70, // 2-3 bullets or 1 clean headshot
-    fireRate: 0.8,
-    reloadTime: 3.5,
-    range: 800,
-    recoilPitch: 0.06,
-    recoilYaw: 0.01,
-    bulletSpeed: 940,
-    scopeType: '8x',
-    zoomFov: 14,
-    description: 'Supply drop exclusive monster rifle. Extreme range with 8x sniper scope.',
-  },
   kar98k: {
     id: 'kar98k',
     name: 'Kar98k',
     category: 'Sniper',
     ammoType: '7.62mm',
     magSize: 5,
-    damage: 48, // 2-3 bullets to knock
+    damage: 100, // 1 hit kill
     fireRate: 0.9,
     reloadTime: 3.2,
     range: 500,
@@ -92,40 +41,24 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     bulletSpeed: 760,
     scopeType: '4x',
     zoomFov: 24,
-    description: 'Classic bolt-action sniper rifle.',
+    description: 'Classic bolt-action sniper rifle. 1-hit elimination.',
   },
-  s12k: {
-    id: 's12k',
-    name: 'S12K',
-    category: 'Shotgun',
-    ammoType: '12gauge',
-    magSize: 8,
-    damage: 14 * 6, // 6 pellets at 14 dmg each
-    fireRate: 3.2,
-    reloadTime: 2.8,
-    range: 50,
-    recoilPitch: 0.05,
-    recoilYaw: 0.02,
-    bulletSpeed: 350,
+  revolver: {
+    id: 'revolver',
+    name: 'Revolver',
+    category: 'Pistol',
+    ammoType: '7.62mm',
+    magSize: 6,
+    damage: 100, // 1 hit kill
+    fireRate: 3.5,
+    reloadTime: 2.0,
+    range: 120,
+    recoilPitch: 0.03,
+    recoilYaw: 0.015,
+    bulletSpeed: 500,
     scopeType: 'iron',
     zoomFov: 55,
-    description: 'Semi-automatic 12-gauge combat shotgun for close-quarters cleanup.',
-  },
-  pan: {
-    id: 'pan',
-    name: 'Cast Iron Pan',
-    category: 'Melee',
-    magSize: 1,
-    damage: 45,
-    fireRate: 1.5,
-    reloadTime: 0.1,
-    range: 3,
-    recoilPitch: 0,
-    recoilYaw: 0,
-    bulletSpeed: 0,
-    scopeType: 'iron',
-    zoomFov: 60,
-    description: 'Iconic melee weapon that deflects bullets hitting your lower back!',
+    description: 'Reliable sidearm revolver. 1-hit elimination.',
   },
 };
 

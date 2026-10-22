@@ -153,7 +153,7 @@ export const FullMapModal: React.FC<FullMapModalProps> = ({
       ctx.fill();
     });
 
-    // 10. Friendly Squadmates only (Enemies are NOT shown on map for realistic scouting)
+    // 10. Teammates
     radarBots.forEach((rb) => {
       if (!rb.isTeammate) return;
       const rx = toCanvasX(rb.x);

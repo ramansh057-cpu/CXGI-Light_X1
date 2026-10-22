@@ -116,7 +116,7 @@ export class BotManager {
    * Initialize bots that will fall from the airplane along the flight path
    */
   public spawnMatchBots(count = 59): void {
-    const weaponsPool: WeaponId[] = ['m416', 'akm'];
+    const weaponsPool: WeaponId[] = ['kar98k', 'revolver'];
 
     // Famous Miramar Named Places dynamically constructed from the 4x scaled MAP_POIS array (-950 to 950)
     const MIRAMAR_POIS = MAP_POIS.map(p => ({
@@ -616,15 +616,14 @@ export class BotManager {
       let foundOpponentType: 'player' | 'bot' = 'bot';
       let shortestDist = 120; // 120m detection range (increased for visibility)
 
-      // Check player (must have direct line of sight or be close < 55m, and player MUST be grounded & outside of houses)
+      // Check player (must have direct line of sight or be close < 55m, and player MUST be grounded)
       const botEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
       const playerTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
       const playerEyePos = new THREE.Vector3(playerPos.x, playerPos.y + playerTargetHeight, playerPos.z);
-      const isPlayerInsideBuilding = isPositionInsideBuilding(playerPos, this.worldBuilder.colliders);
-      const isPlayerTargetable = playerHealth > 0 && gamePhase === 'ground' && !isPlayerInsideBuilding;
+      const isPlayerTargetable = playerHealth > 0 && gamePhase === 'ground';
 
-      if (isPlayerTargetable && (distToPlayer < 55.0 || bot.targetEnemy === 'player')) {
-        const hasSightToPlayer = distToPlayer < 15.0 || checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders);
+      if (isPlayerTargetable && (distToPlayer < 120.0 || bot.targetEnemy === 'player')) {
+        const hasSightToPlayer = distToPlayer < 25.0 || checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders);
         if (hasSightToPlayer && distToPlayer < shortestDist) {
           shortestDist = distToPlayer;
           foundOpponentPos = playerPos;
@@ -655,7 +654,7 @@ export class BotManager {
 
       // Switch to engaging if target found
       if (foundOpponentPos && foundOpponentId) {
-        if (bot.health < 30) {
+        if (bot.health < 30 && foundOpponentId !== 'player') {
           bot.state = 'flee';
           // Run away from threat towards nearest POI building or terrain cover
           const runAngle = Math.atan2(bot.position.x - foundOpponentPos.x, bot.position.z - foundOpponentPos.z);
@@ -669,7 +668,8 @@ export class BotManager {
           bot.state = 'engaging';
           bot.targetEnemy = foundOpponentId;
           bot.targetEnemyType = foundOpponentType;
-          bot.reactionTimer = 0.4 + Math.random() * 0.3; // Pro reaction time
+          bot.reactionTimer = 0;
+          bot.burstTimer = 0; // Fire immediately on spotting!
         }
       }
 
@@ -758,20 +758,20 @@ export class BotManager {
         const perpZ = Math.sin(bot.rotationY) * bot.jiggleDirection;
         const jiggleSpeed = 5.5;
 
-        // Advance or back up slightly based on distance, and RETREAT if low HP (< 35 HP)!
+        // Advance or back up slightly based on distance
         let forwardSpeed = 0;
-        if (bot.health < 35) {
+        if (bot.targetEnemy === 'player') {
+          if (distToEnemy > 30) {
+            forwardSpeed = 4.2; // Push towards player
+          } else if (distToEnemy < 8) {
+            forwardSpeed = -1.5;
+          }
+        } else if (bot.health < 35) {
           forwardSpeed = -5.5; // Retreat away from danger to seek cover!
         } else if (distToEnemy > 35) {
           forwardSpeed = 3.2; // Close in
         } else if (distToEnemy < 10) {
           forwardSpeed = -2.0; // Back up to maintain weapon range
-        }
-
-        if (isInside) {
-          // Bots cannot shoot their gun inside the home!
-          bot.burstCount = 0;
-          bot.shootCooldown = 1.5; // Reset cooldown
         }
 
         // Normal combat movement
@@ -787,97 +787,95 @@ export class BotManager {
         // Reaction timer ticks down
         if (bot.reactionTimer > 0) {
           bot.reactionTimer -= dt;
-        } else if (distToEnemy < 95 && !isInside) {
-          // ACCURATE AIM & 4-5 BULLET BURST FIRING
+        }
+
+        // CONTINUOUS FIRE AT PLAYER WHEN SEEN (Fires continuously and kills in 4 hits)
+        if (bot.targetEnemy === 'player' && distToEnemy < 120) {
+          bot.reactionTimer = 0;
+          bot.burstTimer -= dt;
+          if (bot.burstTimer <= 0) {
+            bot.burstTimer = 0.22; // Continuous automatic gunfire
+
+            sound.playGunshot(bot.weapon, true, distToPlayer);
+            this.onSoundMade(bot.position, 'gunshot');
+            this.notifySoundFired(bot.position, bot.id);
+
+            const bEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
+            const pTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
+            const pEyePos = new THREE.Vector3(playerPos.x, playerPos.y + pTargetHeight, playerPos.z);
+            const hasSight = distToEnemy < 20 || checkLineOfSight(bEyePos, pEyePos, this.worldBuilder.colliders);
+
+            if (hasSight) {
+              let hitChance = 0.95;
+              if (distToEnemy > 65) {
+                hitChance = 0.85;
+              } else if (distToEnemy > 35) {
+                hitChance = 0.90;
+              }
+
+              const isHit = Math.random() < hitChance;
+              const targetHitPos = isHit
+                ? pEyePos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2))
+                : pEyePos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2.2));
+
+              const botMuzzle = bot.position.clone().add(new THREE.Vector3(
+                Math.sin(bot.rotationY + 0.25) * 0.55,
+                1.35,
+                Math.cos(bot.rotationY + 0.25) * 0.55
+              ));
+
+              if (this.onBulletTracer) {
+                this.onBulletTracer(botMuzzle, targetHitPos, isHit);
+              }
+
+              if (isHit) {
+                // Enemies kill player in exactly 4 hits (100 HP / 25 = 4)
+                const rawDmg = 25;
+                onPlayerDamage(rawDmg, bot.name, bot.weapon);
+              }
+            }
+          }
+        } else if (bot.targetEnemy !== 'player' && distToEnemy < 95 && !isInside) {
+          // Bot vs Bot fight (disciplined burst)
           if (bot.burstCount > 0) {
             bot.burstTimer -= dt;
             if (bot.burstTimer <= 0) {
               bot.burstCount--;
-              bot.burstTimer = 0.11; // 0.11s burst fire rate (~550 RPM authentic AR cadence)
+              bot.burstTimer = 0.15;
 
               sound.playGunshot(bot.weapon, true, distToPlayer);
               this.onSoundMade(bot.position, 'gunshot');
               this.notifySoundFired(bot.position, bot.id);
 
-              if (bot.targetEnemy === 'player') {
-                const bEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
-                const pTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
-                const pEyePos = new THREE.Vector3(playerPos.x, playerPos.y + pTargetHeight, playerPos.z);
-                const hasSight = checkLineOfSight(bEyePos, pEyePos, this.worldBuilder.colliders);
-                const isPlayerInside = isPositionInsideBuilding(playerPos, this.worldBuilder.colliders);
-
-                if (hasSight && !isPlayerInside) {
-                  // ACCURATE AIM:
-                  // Deadly accurate aim when player is exposed:
-                  // < 35m: 95% accuracy
-                  // 35m - 65m: 90% accuracy
-                  // 65m - 95m: 82% accuracy
-                  let hitChance = 0.95;
-                  if (distToEnemy > 65) {
-                    hitChance = 0.82;
-                  } else if (distToEnemy > 35) {
-                    hitChance = 0.90;
-                  }
-
-                  const isHit = Math.random() < hitChance;
-                  const targetHitPos = isHit
-                    ? pEyePos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.35, (Math.random() - 0.5) * 0.25))
-                    : pEyePos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2.2));
-
-                  const botMuzzle = bot.position.clone().add(new THREE.Vector3(
-                    Math.sin(bot.rotationY + 0.25) * 0.55,
-                    1.35,
-                    Math.cos(bot.rotationY + 0.25) * 0.55
-                  ));
-
+              const otherBot = activeBots.find((b) => b.id === bot.targetEnemy);
+              if (otherBot) {
+                const hasSight = checkLineOfSight(bot.position, otherBot.position, this.worldBuilder.colliders);
+                if (hasSight) {
+                  const botMuzzle = bot.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+                  const otherTarget = otherBot.position.clone().add(new THREE.Vector3(0, 1.2, 0));
                   if (this.onBulletTracer) {
-                    this.onBulletTracer(botMuzzle, targetHitPos, isHit);
+                    this.onBulletTracer(botMuzzle, otherTarget, true);
                   }
-
-                  if (isHit) {
-                    // Enemies hit player for 20 damage: exactly 5 hits knock down 100 HP!
-                    const rawDmg = 20;
-                    onPlayerDamage(rawDmg, bot.name, bot.weapon);
-                  }
-                } else {
-                  // Obstacle in between: lost line of sight, pause firing
-                  bot.burstCount = 0;
-                  bot.shootCooldown = 0.9;
-                }
-              } else {
-                // Bot vs Bot fight (disciplined burst)
-                const otherBot = activeBots.find(b => b.id === bot.targetEnemy);
-                if (otherBot) {
-                  const hasSight = checkLineOfSight(bot.position, otherBot.position, this.worldBuilder.colliders);
-                  if (hasSight) {
-                    const botMuzzle = bot.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-                    const otherTarget = otherBot.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-                    if (this.onBulletTracer) {
-                      this.onBulletTracer(botMuzzle, otherTarget, true);
-                    }
-                    const dmgPerShot = 20; // Exactly 5 hits to knock down other bot (100 HP / 20 = 5)
-                    const result = this.damageBot(otherBot.id, dmgPerShot, Math.random() > 0.85, bot.name, bot.weaponDef.name);
-                    if (result.isDead) {
-                      bot.kills++;
-                      bot.health = 100;
-                      bot.state = 'looting';
-                      bot.stateTimer = 4;
-                      bot.burstCount = 0;
-                    }
-                  } else {
+                  const dmgPerShot = 50;
+                  const result = this.damageBot(otherBot.id, dmgPerShot, Math.random() > 0.85, bot.name, bot.weaponDef.name);
+                  if (result.isDead) {
+                    bot.kills++;
+                    bot.health = 100;
+                    bot.state = 'looting';
+                    bot.stateTimer = 4;
                     bot.burstCount = 0;
                   }
+                } else {
+                  bot.burstCount = 0;
                 }
               }
 
-              // After firing 4-5 bullets in the burst, pause for tactical strafe / jiggle peek
               if (bot.burstCount <= 0) {
-                bot.shootCooldown = 0.95 + Math.random() * 0.35;
+                bot.shootCooldown = 1.0;
               }
             }
           } else if (bot.shootCooldown <= 0) {
-            // Start a disciplined 4-5 bullet burst!
-            bot.burstCount = Math.random() < 0.5 ? 4 : 5;
+            bot.burstCount = 4;
             bot.burstTimer = 0;
           }
         }
@@ -1016,61 +1014,14 @@ export class BotManager {
     damage: number,
     isHeadshot: boolean,
     killerName = 'You',
-    weaponUsed = 'M416'
+    weaponUsed = 'Kar98k'
   ): { isDead: boolean; isKnocked: boolean; remainingHealth: number } {
     const bot = this.bots.find(b => b.id === botId && b.state !== 'dead');
     if (!bot) return { isDead: true, isKnocked: false, remainingHealth: 0 };
 
-    let finalDamage = damage;
-    if (killerName === 'You') {
-      finalDamage = bot.maxHealth / 5; // Exactly 5 hits from player to enemy
-    } else if (isHeadshot) {
-      finalDamage *= 1.35;
-    }
-
-    // 1. If bot is already knocked down, it takes 4-5 MORE bullets to finish off!
-    if (bot.state === 'knocked') {
-      bot.knockedHealth -= finalDamage;
-      if (bot.knockedHealth <= 0) {
-        this.killBot(bot, killerName, weaponUsed, isHeadshot, killerName === 'You');
-        return { isDead: true, isKnocked: false, remainingHealth: 0 };
-      }
-      return { isDead: false, isKnocked: true, remainingHealth: bot.knockedHealth };
-    }
-
-    // 2. Normal combat state: takes 4-5 bullets to knock down!
-    bot.health -= finalDamage;
-
-    if (bot.health > 0) {
-      // Alert bot to turn towards shooter if not in combat
-      if (bot.state !== 'engaging') {
-        bot.state = 'engaging';
-        bot.targetEnemy = killerName === 'You' ? 'player' : killerName;
-      }
-      return { isDead: false, isKnocked: false, remainingHealth: bot.health };
-    }
-
-    // Bot is KNOCKED DOWN! (Downed crawling on knees)
-    bot.health = 0;
-    bot.knockedHealth = 100; // Takes 4-5 bullets to finish!
-    bot.state = 'knocked';
-
-    bot.mesh.position.y -= 0.5;
-    bot.mesh.rotation.x = Math.PI / 4; // Crouch/crawl forward angle
-
-    this.onKillFeed({
-      id: `knock_${Date.now()}_${Math.random()}`,
-      killer: killerName,
-      victim: bot.name,
-      weapon: weaponUsed,
-      isHeadshot,
-      isPlayerKiller: killerName === 'You',
-      isPlayerVictim: false,
-      isKnockout: true,
-      timestamp: Date.now(),
-    });
-
-    return { isDead: false, isKnocked: true, remainingHealth: bot.knockedHealth };
+    // 1-HIT KILL: Any shot from Kar98k or Revolver instantly eliminates the enemy!
+    this.killBot(bot, killerName, weaponUsed, isHeadshot, killerName === 'You');
+    return { isDead: true, isKnocked: false, remainingHealth: 0 };
   }
 
   private killBot(
@@ -1122,8 +1073,8 @@ export class BotManager {
     this.worldBuilder.lootItems.push({
       id: `deathcrate_ammo_${bot.id}`,
       type: 'ammo',
-      itemId: bot.weaponDef.ammoType || '5.56mm',
-      name: `${bot.weaponDef.ammoType || '5.56mm'} Ammo (60)`,
+      itemId: bot.weaponDef.ammoType || '7.62mm',
+      name: `${bot.weaponDef.ammoType || '7.62mm'} Ammo (60)`,
       amount: 60,
       position: crateGroup.position,
     });
