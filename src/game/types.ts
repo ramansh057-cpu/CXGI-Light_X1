@@ -3,14 +3,14 @@
  * Map: 1000m x 1000m (-500 to +500)
  */
 
-export type WeaponId = 'kar98k' | 'revolver';
+export type WeaponId = 'kar98k';
 
 export type AmmoType = '7.62mm';
 
 export interface WeaponDef {
   id: WeaponId;
   name: string;
-  category: 'Sniper' | 'Pistol';
+  category: 'Sniper';
   ammoType?: AmmoType;
   magSize: number;
   damage: number;
@@ -20,7 +20,7 @@ export interface WeaponDef {
   recoilPitch: number;
   recoilYaw: number;
   bulletSpeed: number; // m/s
-  scopeType: '4x' | 'iron';
+  scopeType: '4x';
   zoomFov: number; // camera FOV when scoping
   description: string;
 }
@@ -42,23 +42,6 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     scopeType: '4x',
     zoomFov: 24,
     description: 'Classic bolt-action sniper rifle. 1-hit elimination.',
-  },
-  revolver: {
-    id: 'revolver',
-    name: 'Revolver',
-    category: 'Pistol',
-    ammoType: '7.62mm',
-    magSize: 6,
-    damage: 100, // 1 hit kill
-    fireRate: 3.5,
-    reloadTime: 2.0,
-    range: 120,
-    recoilPitch: 0.03,
-    recoilYaw: 0.015,
-    bulletSpeed: 500,
-    scopeType: 'iron',
-    zoomFov: 55,
-    description: 'Reliable sidearm revolver. 1-hit elimination.',
   },
 };
 
@@ -169,8 +152,11 @@ export interface RadarBotInfo {
   id: string;
   x: number;
   z: number;
+  y?: number;
   isKnocked: boolean;
   isTeammate: boolean;
+  name?: string;
+  distance?: number;
 }
 
 export interface POILocation {
@@ -214,7 +200,7 @@ export interface GraphicSettings {
   shadowMode: 'simple_blob' | 'directional_fast' | 'off';
   renderScale: 0.35 | 0.5 | 0.65 | 0.75 | 1.0;
   targetFps: 30 | 60 | 0; // 0 for uncapped
-  drawDistance: 350 | 600 | 900;
+  drawDistance: 180 | 350 | 600 | 900;
   showTouchControls: boolean;
   showMinimap: boolean; // Clean GPS minimap (no radar/enemy markers) or hidden for hardcore
   mouseSensitivity: number;
@@ -233,7 +219,7 @@ export const DEFAULT_GRAPHIC_SETTINGS: GraphicSettings = {
   shadowMode: 'simple_blob', // default to ultra-light blob shadows for older laptops
   renderScale: 0.35, // Lower resolution for vintage pixel look and high performance
   targetFps: 60, // Locked to 60 FPS
-  drawDistance: 600,
+  drawDistance: 180,
   showTouchControls: isTouchDevice,
   showMinimap: true,
   mouseSensitivity: 1.0,

@@ -45,6 +45,7 @@ export class WorldBuilder {
   public lootItems: LootItem[] = [];
   public vehicles: VehicleInstance[] = [];
   public houseSpawnPoints: THREE.Vector3[] = [];
+  public buildingBounds: THREE.Box3[] = [];
   public airdropCrates: { mesh: THREE.Group; position: THREE.Vector3; hasLanded: boolean; loot: LootItem[] }[] = [];
   public waterMesh!: THREE.Mesh;
 
@@ -408,10 +409,12 @@ export class WorldBuilder {
     const bunkerArch = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 12), wallMilitaryMat);
     bunkerArch.position.set(bkX, bkY + 2.5, bkZ);
     this.scene.add(bunkerArch);
+    const bunkerBox = new THREE.Box3().setFromCenterAndSize(bunkerArch.position, new THREE.Vector3(8, 5, 12));
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(bunkerArch.position, new THREE.Vector3(8, 5, 12)),
+      box: bunkerBox,
       type: 'building',
     });
+    this.buildingBounds.push(bunkerBox);
 
     // 4h. STARTING POINT OUTPOST (South Outpost Gate, x = 0, z = -850)
     const sgX = 0;
@@ -536,6 +539,15 @@ export class WorldBuilder {
 
     this.scene.add(houseGroup);
 
+    // Register house 3D building bounds for shelter and bullet blocking
+    const totalH = (floors * floorH) + 3.0;
+    this.buildingBounds.push(
+      new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(x, y + totalH / 2, z),
+        new THREE.Vector3(width, totalH, depth)
+      )
+    );
+
     // Register indoor loot spawn points
     this.houseSpawnPoints.push(new THREE.Vector3(x + 2, y + 0.5, z + 2));
     this.houseSpawnPoints.push(new THREE.Vector3(x - 2, y + 0.5, z - 2));
@@ -607,13 +619,15 @@ export class WorldBuilder {
 
     this.scene.add(barracks);
 
+    const barracksBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + height / 2, z),
+      new THREE.Vector3(width, height + 2, length)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + height / 2, z),
-        new THREE.Vector3(width, height + 2, length)
-      ),
+      box: barracksBox,
       type: 'building',
     });
+    this.buildingBounds.push(barracksBox);
 
     // Register indoor loot spawn points for Barracks
     this.houseSpawnPoints.push(new THREE.Vector3(x - 2, y + 0.5, z - 8));
@@ -660,13 +674,15 @@ export class WorldBuilder {
 
     this.scene.add(church);
 
+    const churchBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + 5, z),
+      new THREE.Vector3(16, 10, 24)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + 5, z),
-        new THREE.Vector3(16, 10, 24)
-      ),
+      box: churchBox,
       type: 'building',
     });
+    this.buildingBounds.push(churchBox);
 
     // Register indoor loot spawn points for Church
     this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z - 4));
@@ -722,13 +738,15 @@ export class WorldBuilder {
 
     this.scene.add(arena);
 
+    const arenaBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + arenaH / 2, z),
+      new THREE.Vector3(arenaW, arenaH, arenaL)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + arenaH / 2, z),
-        new THREE.Vector3(arenaW, arenaH, arenaL)
-      ),
+      box: arenaBox,
       type: 'building',
     });
+    this.buildingBounds.push(arenaBox);
 
     this.houseSpawnPoints.push(new THREE.Vector3(x, y + 1.4, z));
     this.houseSpawnPoints.push(new THREE.Vector3(x - 9, y + 4.0, z));
@@ -753,13 +771,15 @@ export class WorldBuilder {
 
     this.scene.add(casino);
 
+    const casinoBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + 6, z),
+      new THREE.Vector3(18, 12, 18)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + 6, z),
-        new THREE.Vector3(18, 12, 18)
-      ),
+      box: casinoBox,
       type: 'building',
     });
+    this.buildingBounds.push(casinoBox);
 
     this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z));
     this.houseSpawnPoints.push(new THREE.Vector3(x - 4, y + 0.5, z + 4));
@@ -804,13 +824,15 @@ export class WorldBuilder {
 
     this.scene.add(villa);
 
+    const villaBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + wingH / 2, z),
+      new THREE.Vector3(courtyardSize + wingW * 2, wingH, courtyardSize + wingW * 2)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + wingH / 2, z),
-        new THREE.Vector3(courtyardSize + wingW * 2, wingH, courtyardSize + wingW * 2)
-      ),
+      box: villaBox,
       type: 'building',
     });
+    this.buildingBounds.push(villaBox);
 
     this.houseSpawnPoints.push(new THREE.Vector3(x - 9, y + 0.5, z));
     this.houseSpawnPoints.push(new THREE.Vector3(x + 9, y + 0.5, z));
@@ -857,13 +879,15 @@ export class WorldBuilder {
 
     this.scene.add(skeleton);
 
+    const skeletonBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + colH / 2, z),
+      new THREE.Vector3(width, colH, length)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + colH / 2, z),
-        new THREE.Vector3(width, colH, length)
-      ),
+      box: skeletonBox,
       type: 'building',
     });
+    this.buildingBounds.push(skeletonBox);
 
     this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z));
     this.houseSpawnPoints.push(new THREE.Vector3(x, y + floorH + 0.5, z));
@@ -920,13 +944,15 @@ export class WorldBuilder {
 
     this.scene.add(school);
 
+    const schoolBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + 4, z),
+      new THREE.Vector3(56, 9, 26)
+    );
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + 4, z),
-        new THREE.Vector3(56, 9, 26)
-      ),
+      box: schoolBox,
       type: 'building',
     });
+    this.buildingBounds.push(schoolBox);
 
     // Register indoor loot spawn points for School Complex
     this.houseSpawnPoints.push(new THREE.Vector3(x + 10, y + 0.5, z + 4));

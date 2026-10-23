@@ -182,7 +182,7 @@ export default function App() {
           yaw: engineRef.current.cameraYaw,
         });
 
-        setRadarBots([]);
+        setRadarBots(engineRef.current.getRadarBots());
         setIsScoping(engineRef.current.isScoping);
         setIsPointerLocked(engineRef.current.isPointerLocked);
         setRespawnChances(engineRef.current.respawnChances);
@@ -205,6 +205,8 @@ export default function App() {
       } else if (e.code === 'Tab') {
         e.preventDefault();
         setShowInventory((prev) => !prev);
+      } else if (e.code === 'KeyT') {
+        engine.spawnTestEnemy();
       } else if (e.code === 'Escape') {
         if (showFullMap || showInventory) {
           setShowFullMap(false);
@@ -448,6 +450,7 @@ export default function App() {
                 return next;
               });
             }}
+            onSpawnTestEnemy={() => engineRef.current?.spawnTestEnemy()}
           />
 
           {/* Pointer Lock Helper Prompt for Laptops & Desktops only (bypassed on phones/touchscreens) */}

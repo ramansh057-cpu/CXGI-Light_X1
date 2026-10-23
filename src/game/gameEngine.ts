@@ -19,13 +19,14 @@ import {
   KillFeedItem,
   SoundIndicator,
   SquadMember,
+  RadarBotInfo,
 } from './types';
 import { WorldBuilder, LootItem, VehicleInstance } from './worldBuilder';
 import { BotManager } from './botAI';
 import { SquadManager } from './squadManager';
 import { VehicleController } from './vehiclePhysics';
 import { sound } from './audio';
-import { resolveHorizontalCollisions, resolveWorldHeight, checkLineOfSight } from './physicsUtils';
+import { resolveHorizontalCollisions, resolveWorldHeight, checkLineOfSight, isPositionInsideBuilding } from './physicsUtils';
 
 export type GamePhase = 'in_plane' | 'freefall' | 'parachuting' | 'ground' | 'driving' | 'game_over' | 'victory';
 
@@ -135,8 +136,8 @@ export class GameEngine {
     backpackLevel: 2,
     weapon1: 'kar98k',
     weapon1Ammo: 5,
-    weapon2: 'revolver',
-    weapon2Ammo: 6,
+    weapon2: 'kar98k',
+    weapon2Ammo: 5,
     melee: null,
     activeSlot: 1,
   };
@@ -165,6 +166,7 @@ export class GameEngine {
   // Airplane & Parachute
   private planeMesh!: THREE.Group;
   private nextAirdropTimer = 75;
+  private playerLandingGraceTimer = 15.0; // 15-second landing grace period so player isn't beamed on touchdown
 
   constructor(container: HTMLElement, callbacks: GameEngineCallbacks) {
     this.container = container;
@@ -172,8 +174,8 @@ export class GameEngine {
 
     // 1. Scene & Camera
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x64b0e8); // bright sunny blue sky
-    this.scene.fog = new THREE.FogExp2(0x82c4ee, 0.00095); // crisp horizon fog
+    this.scene.background = new THREE.Color(0x9fb3c8); // overcast foggy sky
+    this.scene.fog = new THREE.FogExp2(0xa3b6c8, 0.0055); // dense atmospheric fog
 
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(72, aspect, 0.05, 1200);
@@ -241,10 +243,10 @@ export class GameEngine {
   }
 
   private setupLighting(): void {
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.88);
+    this.ambientLight = new THREE.AmbientLight(0xd4e2ee, 0.95);
     this.scene.add(this.ambientLight);
 
-    this.dirLight = new THREE.DirectionalLight(0xfffaee, 1.2);
+    this.dirLight = new THREE.DirectionalLight(0xe8f0f8, 0.9);
     this.dirLight.position.set(250, 420, 200);
     this.scene.add(this.dirLight);
     this.scene.add(this.camera);
@@ -264,8 +266,8 @@ export class GameEngine {
     this.camera.far = newSettings.drawDistance;
     this.camera.updateProjectionMatrix();
 
-    const fogDensity = newSettings.drawDistance === 350 ? 0.003 : newSettings.drawDistance === 600 ? 0.0016 : 0.0011;
-    this.scene.fog = new THREE.FogExp2(0x89b6db, fogDensity);
+    const fogDensity = newSettings.drawDistance === 180 ? 0.015 : newSettings.drawDistance === 350 ? 0.008 : newSettings.drawDistance === 600 ? 0.0055 : 0.0035;
+    this.scene.fog = new THREE.FogExp2(0xa3b6c8, fogDensity);
 
     if (newSettings.shadowMode === 'directional_fast') {
       this.renderer.shadowMap.enabled = true;
@@ -364,14 +366,17 @@ export class GameEngine {
   private initSafeZones(): void {
     this.safeZone.centerX = 0;
     this.safeZone.centerZ = 0;
-    this.safeZone.currentRadius = 300;
-    this.safeZone.targetCenterX = (Math.random() - 0.5) * 80;
-    this.safeZone.targetCenterZ = (Math.random() - 0.5) * 80;
-    this.safeZone.targetRadius = 200;
+    this.safeZone.currentRadius = 330;
+    this.safeZone.targetCenterX = 0;
+    this.safeZone.targetCenterZ = 0;
+    this.safeZone.targetRadius = 180;
     this.safeZone.blueRadius = 330;
-    this.safeZone.timeRemaining = 160;
-    this.safeZone.phaseDuration = 160;
-    this.safeZone.isShrinking = false;
+    this.safeZone.timeRemaining = 2; // Starts shrinking immediately at match start
+    this.safeZone.phaseDuration = 120;
+    this.safeZone.isShrinking = true;
+    this.safeZone.phase = 1;
+    this.safeZone.totalPhases = 5;
+    this.safeZone.damagePerSec = 2;
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -727,11 +732,17 @@ export class GameEngine {
       if (this.playerPos.y <= groundY + 0.5) {
         this.playerPos.y = groundY;
         this.gamePhase = 'ground';
+        this.playerLandingGraceTimer = 15.0; // 15-second landing grace period starts on touchdown
+        this.callbacks.onPromptChange('TOUCHDOWN! BOT COMBAT UNDERWAY - LOOT UP!');
+        setTimeout(() => this.callbacks.onPromptChange(null), 3500);
       }
     }
 
     // 4. Ground Movement
     if (this.gamePhase === 'ground') {
+      if (this.playerLandingGraceTimer > 0) {
+        this.playerLandingGraceTimer -= dt;
+      }
       this.updateGroundMovement(dt);
     }
 
@@ -785,7 +796,8 @@ export class GameEngine {
       this.worldBuilder.vehicles,
       this.gamePhase,
       this.isCrouched,
-      (dmg, attacker, weapon) => this.damagePlayer(dmg, attacker, weapon)
+      (dmg, attacker, weapon) => this.damagePlayer(dmg, attacker, weapon),
+      this.playerLandingGraceTimer > 0
     );
 
     this.squadManager.update(
@@ -1179,8 +1191,14 @@ export class GameEngine {
   public damagePlayer(rawDamage: number, attackerName: string, weapon: WeaponId): void {
     if (this.playerHealth <= 0) return;
 
-    // 4 HITS TO KILL: 25 HP damage per hit (100 HP / 25 = exactly 4 hits to kill)
-    const dmg = 25;
+    // Direct Home Shelter Immunity: If player is inside home/building, reject all outside enemy gunfire
+    if (isPositionInsideBuilding(this.playerPos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds)) {
+      console.log(`[SHELTER DEFENSE] Player is inside home/building. Blocked damage from ${attackerName}`);
+      return;
+    }
+
+    // 5 HITS TO KILL: 20 HP damage per hit (100 HP / 20 = exactly 5 hits to kill)
+    const dmg = rawDamage || 20;
     this.playerHealth = Math.max(0, this.playerHealth - dmg);
     this.callbacks.onHealthChange(this.playerHealth, this.playerBoost);
     sound.playImpact('flesh');
@@ -1404,6 +1422,12 @@ export class GameEngine {
       }
     }
 
+    const isInsideHome = isPositionInsideBuilding(this.playerPos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
+    if (isInsideHome) {
+      this.callbacks.onPromptChange('🛡️ [HOME SHELTER] INSIDE COVER · PROTECTED FROM ENEMY GUNFIRE');
+      return;
+    }
+
     this.callbacks.onPromptChange(null);
   }
 
@@ -1435,6 +1459,55 @@ export class GameEngine {
     this.renderer.render(this.scene, this.camera);
   }
 
+  public spawnTestEnemy(): void {
+    this.botManager.cleanupAndReplaceUnfindable(this.playerPos);
+    this.botManager.spawnFreshEnemyNear(this.playerPos);
+    this.callbacks.onPromptChange('[TEST] UNREACHABLE ENEMIES CLEARED · FRESH ENEMY SPAWNED NEARBY!');
+    setTimeout(() => this.callbacks.onPromptChange(null), 3000);
+  }
+
+  public getRadarBots(): RadarBotInfo[] {
+    const list: RadarBotInfo[] = [];
+
+    // 1. Hostile Enemies
+    if (this.botManager && this.botManager.bots) {
+      for (const b of this.botManager.bots) {
+        if (b.state === 'dead' || b.state === 'in_plane') continue;
+        const dist = Math.hypot(b.position.x - this.playerPos.x, b.position.z - this.playerPos.z);
+        list.push({
+          id: b.id,
+          x: b.position.x,
+          z: b.position.z,
+          y: b.position.y,
+          isKnocked: b.state === 'knocked',
+          isTeammate: false,
+          name: b.name,
+          distance: Math.round(dist),
+        });
+      }
+    }
+
+    // 2. Friendly Squad Teammates
+    if (this.squadManager && this.squadManager.teammates) {
+      for (const t of this.squadManager.teammates) {
+        if (t.state === 'dead' || t.state === 'in_plane') continue;
+        const dist = Math.hypot(t.position.x - this.playerPos.x, t.position.z - this.playerPos.z);
+        list.push({
+          id: t.member.id,
+          x: t.position.x,
+          z: t.position.z,
+          y: t.position.y,
+          isKnocked: t.state === 'knocked',
+          isTeammate: true,
+          name: t.member.name,
+          distance: Math.round(dist),
+        });
+      }
+    }
+
+    return list;
+  }
+
   public restartMatch(): void {
     this.playerHealth = this.playerMaxHealth;
     this.playerBoost = 0;
@@ -1454,8 +1527,8 @@ export class GameEngine {
       backpackLevel: 2,
       weapon1: 'kar98k',
       weapon1Ammo: 5,
-      weapon2: 'revolver',
-      weapon2Ammo: 6,
+      weapon2: 'kar98k',
+      weapon2Ammo: 5,
       melee: null,
       activeSlot: 1,
     };

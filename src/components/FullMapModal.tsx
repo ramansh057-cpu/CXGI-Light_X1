@@ -153,16 +153,30 @@ export const FullMapModal: React.FC<FullMapModalProps> = ({
       ctx.fill();
     });
 
-    // 10. Teammates
+    // 10. Radar Tracked Enemies & Teammates
     radarBots.forEach((rb) => {
-      if (!rb.isTeammate) return;
       const rx = toCanvasX(rb.x);
       const rz = toCanvasZ(rb.z);
       
-      ctx.fillStyle = rb.isKnocked ? '#f59e0b' : '#22c55e';
-      ctx.beginPath();
-      ctx.arc(rx, rz, 4.5, 0, Math.PI * 2);
-      ctx.fill();
+      if (rb.isTeammate) {
+        ctx.fillStyle = rb.isKnocked ? '#f59e0b' : '#22c55e';
+        ctx.beginPath();
+        ctx.arc(rx, rz, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Red Hostile Enemy Blip
+        ctx.fillStyle = rb.isKnocked ? '#f59e0b' : '#ef4444';
+        ctx.beginPath();
+        ctx.arc(rx, rz, 4.0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hostile Ping Ring
+        ctx.strokeStyle = rb.isKnocked ? 'rgba(245, 158, 11, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(rx, rz, 6.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     });
 
     // 11. Player Marker (Bright green directional triangle)
@@ -222,6 +236,10 @@ export const FullMapModal: React.FC<FullMapModalProps> = ({
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span>You/Teammate</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444]" />
+            <span className="text-red-400 font-semibold">Radar Hostiles</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-0.5 border-t border-dashed border-white" />

@@ -77,8 +77,28 @@ export function resolveWorldHeight(
 export function checkLineOfSight(
   from: THREE.Vector3,
   to: THREE.Vector3,
-  colliders: BuildingCollider[]
+  colliders: BuildingCollider[],
+  buildingBounds?: THREE.Box3[]
 ): boolean {
+  // If target (e.g. player) is inside a building/home and shooter is outside, line of sight is 100% blocked!
+  if (buildingBounds && buildingBounds.length > 0) {
+    for (const box of buildingBounds) {
+      const toInside = (
+        to.x >= box.min.x && to.x <= box.max.x &&
+        to.z >= box.min.z && to.z <= box.max.z &&
+        to.y >= box.min.y - 0.5 && to.y <= box.max.y + 0.5
+      );
+      const fromInside = (
+        from.x >= box.min.x && from.x <= box.max.x &&
+        from.z >= box.min.z && from.z <= box.max.z &&
+        from.y >= box.min.y - 0.5 && from.y <= box.max.y + 0.5
+      );
+      if (toInside && !fromInside) {
+        return false;
+      }
+    }
+  }
+
   const direction = new THREE.Vector3().subVectors(to, from);
   const distance = direction.length();
   
@@ -88,13 +108,25 @@ export function checkLineOfSight(
   const ray = new THREE.Ray(from, direction);
   const intersectPoint = new THREE.Vector3();
 
+  // Test against building 3D bounding boxes
+  if (buildingBounds) {
+    for (const box of buildingBounds) {
+      if (ray.intersectBox(box, intersectPoint)) {
+        const hitDist = from.distanceTo(intersectPoint);
+        if (hitDist < distance - 0.15) {
+          return false;
+        }
+      }
+    }
+  }
+
   for (const col of colliders) {
     // Bullets are blocked by walls, buildings, crates, rocks, and fences
     if (col.type === 'wall' || col.type === 'building' || col.type === 'crate' || col.type === 'rock' || col.type === 'fence') {
       if (ray.intersectBox(col.box, intersectPoint)) {
         const hitDist = from.distanceTo(intersectPoint);
         // If the collider is closer than the target point, line of sight is blocked
-        if (hitDist < distance - 0.25) {
+        if (hitDist < distance - 0.15) {
           return false;
         }
       }
@@ -107,7 +139,23 @@ export function checkLineOfSight(
 /**
  * Check if a 3D coordinate is inside any building bounds (homes, school, barracks, church)
  */
-export function isPositionInsideBuilding(pos: THREE.Vector3, colliders: BuildingCollider[]): boolean {
+export function isPositionInsideBuilding(
+  pos: THREE.Vector3,
+  colliders: BuildingCollider[],
+  buildingBounds?: THREE.Box3[]
+): boolean {
+  if (buildingBounds && buildingBounds.length > 0) {
+    for (const box of buildingBounds) {
+      if (
+        pos.x >= box.min.x && pos.x <= box.max.x &&
+        pos.z >= box.min.z && pos.z <= box.max.z &&
+        pos.y >= box.min.y - 0.5 && pos.y <= box.max.y + 0.5
+      ) {
+        return true;
+      }
+    }
+  }
+
   for (const col of colliders) {
     if (col.type === 'building') {
       const minX = col.box.min.x - 0.5;
@@ -126,7 +174,30 @@ export function isPositionInsideBuilding(pos: THREE.Vector3, colliders: Building
 /**
  * Calculate a vector that pushes the character outside the nearest building boundaries into the open
  */
-export function getVectorToOutside(pos: THREE.Vector3, colliders: BuildingCollider[]): THREE.Vector3 | null {
+export function getVectorToOutside(
+  pos: THREE.Vector3,
+  colliders: BuildingCollider[],
+  buildingBounds?: THREE.Box3[]
+): THREE.Vector3 | null {
+  if (buildingBounds && buildingBounds.length > 0) {
+    for (const box of buildingBounds) {
+      if (
+        pos.x >= box.min.x && pos.x <= box.max.x &&
+        pos.z >= box.min.z && pos.z <= box.max.z
+      ) {
+        const centerX = (box.min.x + box.max.x) / 2;
+        const centerZ = (box.min.z + box.max.z) / 2;
+        const dir = new THREE.Vector3(pos.x - centerX, 0, pos.z - centerZ);
+        if (dir.lengthSq() < 0.1) dir.set(1, 0, 0);
+        dir.normalize();
+        const halfWidth = (box.max.x - box.min.x) / 2;
+        const halfDepth = (box.max.z - box.min.z) / 2;
+        const safeDist = Math.max(halfWidth, halfDepth) + 5.0;
+        return new THREE.Vector3(centerX + dir.x * safeDist, pos.y, centerZ + dir.z * safeDist);
+      }
+    }
+  }
+
   for (const col of colliders) {
     if (col.type === 'building') {
       const minX = col.box.min.x - 0.5;

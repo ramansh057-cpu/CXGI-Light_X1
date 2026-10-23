@@ -18,7 +18,7 @@ import {
 } from '../game/types';
 import { Minimap } from './Minimap';
 import { ScopeOverlay } from './ScopeOverlay';
-import { Shield, HardHat, Skull, Users, HeartPulse, Zap, Settings as SettingsIcon, Map as MapIcon, Crosshair, UserCheck, AlertTriangle, ArrowUpDown, Compass, Eye, EyeOff } from 'lucide-react';
+import { Shield, HardHat, Skull, Users, HeartPulse, Zap, Settings as SettingsIcon, Map as MapIcon, Crosshair, UserCheck, AlertTriangle, ArrowUpDown, Compass, Eye, EyeOff, Target } from 'lucide-react';
 import { VehicleInstance } from '../game/worldBuilder';
 
 interface HUDProps {
@@ -48,6 +48,7 @@ interface HUDProps {
   onJump?: () => void;
   onToggleInvertMouse?: () => void;
   onToggleMinimap?: () => void;
+  onSpawnTestEnemy?: () => void;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -77,6 +78,7 @@ export const HUD: React.FC<HUDProps> = ({
   onJump,
   onToggleInvertMouse,
   onToggleMinimap,
+  onSpawnTestEnemy,
 }) => {
   const activeSlot = inventory.activeSlot;
   const activeWeaponId = activeSlot === 1 ? inventory.weapon1 : activeSlot === 2 ? inventory.weapon2 : inventory.melee;
@@ -351,6 +353,40 @@ export const HUD: React.FC<HUDProps> = ({
                 );
               })}
 
+              {/* Radar-Tracked Enemy Hostiles on Compass Tape */}
+              {radarBots
+                .filter((b) => !b.isTeammate)
+                .map((enemy) => {
+                  const dx = enemy.x - playerX;
+                  const dz = enemy.z - playerZ;
+                  const dist = Math.hypot(dx, dz);
+                  if (dist > 180) return null;
+
+                  const angleToEnemy = Math.atan2(dx, dz);
+                  let relAngle = angleToEnemy - playerYaw;
+                  while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+                  while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+                  const relDeg = (relAngle * 180) / Math.PI;
+                  if (Math.abs(relDeg) > 65) return null; // Outside compass tape FOV
+
+                  const xPercent = 50 + (relDeg / 60) * 45;
+
+                  return (
+                    <div
+                      key={enemy.id}
+                      style={{ left: `${xPercent}%` }}
+                      className="absolute top-0.5 -translate-x-1/2 flex flex-col items-center pointer-events-none z-20"
+                      title={`Hostile Enemy (${Math.round(dist)}m)`}
+                    >
+                      <div className="w-2 h-2 rotate-45 bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse" />
+                      <span className="text-[8px] font-mono font-bold text-red-400 mt-0.5 drop-shadow">
+                        {Math.round(dist)}m
+                      </span>
+                    </div>
+                  );
+                })}
+
             </div>
           </div>
 
@@ -411,6 +447,13 @@ export const HUD: React.FC<HUDProps> = ({
             >
               <MapIcon className="w-4 h-4" />
             </button>
+            <button
+              onClick={onSpawnTestEnemy}
+              title="Spawn / Test Enemy Nearby (Press T)"
+              className="p-2 rounded-lg bg-red-600/80 hover:bg-red-500 backdrop-blur-md border border-red-400 text-white transition-colors shadow-lg flex items-center justify-center animate-pulse"
+            >
+              <Target className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Minimap (Pure GPS mode or Hardcore Compact Status) */}
@@ -421,6 +464,7 @@ export const HUD: React.FC<HUDProps> = ({
               playerYaw={playerYaw}
               safeZone={safeZone}
               vehicles={vehicles}
+              soundIndicators={soundIndicators}
               radarBots={radarBots}
               onOpenFullMap={onOpenMap}
             />
