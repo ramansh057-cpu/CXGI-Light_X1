@@ -54,7 +54,7 @@ class SoundEngine {
     const enemyDamping = isEnemy ? 0.7 : 1.0;
     const finalVolume = distGain * enemyDamping;
 
-    const bufferSize = this.ctx.sampleRate * (type === 'kar98k' ? 0.5 : 0.25);
+    const bufferSize = this.ctx.sampleRate * 0.22;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -71,34 +71,19 @@ class SoundEngine {
     const punchOsc = this.ctx.createOscillator();
     const punchGain = this.ctx.createGain();
 
-    if (type === 'kar98k') {
-      filter.frequency.setValueAtTime(3200, t);
-      filter.frequency.exponentialRampToValueAtTime(500, t + 0.45);
+    // M416 high-velocity 5.56mm crack & mechanical punch
+    filter.frequency.setValueAtTime(4200, t);
+    filter.frequency.exponentialRampToValueAtTime(800, t + 0.16);
 
-      noiseGain.gain.setValueAtTime(0.8 * finalVolume, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    noiseGain.gain.setValueAtTime(0.75 * finalVolume, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
 
-      punchOsc.type = 'sawtooth';
-      punchOsc.frequency.setValueAtTime(140, t);
-      punchOsc.frequency.exponentialRampToValueAtTime(35, t + 0.3);
+    punchOsc.type = 'sawtooth';
+    punchOsc.frequency.setValueAtTime(190, t);
+    punchOsc.frequency.exponentialRampToValueAtTime(45, t + 0.14);
 
-      punchGain.gain.setValueAtTime(0.7 * finalVolume, t);
-      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    } else {
-      // Revolver
-      filter.frequency.setValueAtTime(4500, t);
-      filter.frequency.exponentialRampToValueAtTime(1000, t + 0.2);
-
-      noiseGain.gain.setValueAtTime(0.6 * finalVolume, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-
-      punchOsc.type = 'triangle';
-      punchOsc.frequency.setValueAtTime(250, t);
-      punchOsc.frequency.exponentialRampToValueAtTime(80, t + 0.12);
-
-      punchGain.gain.setValueAtTime(0.5 * finalVolume, t);
-      punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    }
+    punchGain.gain.setValueAtTime(0.65 * finalVolume, t);
+    punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
 
     whiteNoise.connect(filter);
     filter.connect(noiseGain);

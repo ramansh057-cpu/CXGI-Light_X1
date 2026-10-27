@@ -60,7 +60,7 @@ export default function App() {
   const [playerHealth, setPlayerHealth] = useState(100);
   const [playerBoost, setPlayerBoost] = useState(0);
   const [inventory, setInventory] = useState<InventoryState>({
-    ammo: { '7.62mm': 999 },
+    ammo: { '5.56mm': 999 },
     consumables: { first_aid: 3, medkit: 2, energy_drink: 4, painkiller: 2, bandage: 10 },
     helmetLevel: 0,
     armorLevel: 0,

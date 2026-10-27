@@ -122,7 +122,7 @@ export class GameEngine {
 
   public inventory: InventoryState = {
     ammo: {
-      '7.62mm': 999,
+      '5.56mm': 999,
     },
     consumables: {
       first_aid: 3,
@@ -134,10 +134,10 @@ export class GameEngine {
     helmetLevel: 2,
     armorLevel: 2,
     backpackLevel: 2,
-    weapon1: 'kar98k',
-    weapon1Ammo: 5,
-    weapon2: 'kar98k',
-    weapon2Ammo: 5,
+    weapon1: 'm4',
+    weapon1Ammo: 40,
+    weapon2: 'm4',
+    weapon2Ammo: 40,
     melee: null,
     activeSlot: 1,
   };
@@ -282,38 +282,90 @@ export class GameEngine {
   }
 
   /**
-   * Pure FPP 3D Weapon Viewmodel held in front of the camera
+   * Pure FPP 3D M416 Assault Rifle Viewmodel held in front of the camera
    */
   private createFppWeaponViewmodel(): void {
     this.fppWeaponGroup = new THREE.Group();
 
-    // Tactical Gun Mesh (barrel, body, magazine, scope rail)
-    const gunMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-    const barrelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const handMat = new THREE.MeshLambertMaterial({ color: 0xd9a87e });
+    // High quality tactical materials
+    const gunMat = new THREE.MeshLambertMaterial({ color: 0x1f2326 }); // Dark matte gunmetal
+    const receiverMat = new THREE.MeshLambertMaterial({ color: 0x282c30 }); // Upper receiver
+    const barrelMat = new THREE.MeshLambertMaterial({ color: 0x111315 }); // Steel barrel
+    const railMat = new THREE.MeshLambertMaterial({ color: 0x1a1c1e }); // Picatinny quad rail
+    const scopeMat = new THREE.MeshLambertMaterial({ color: 0x181a1c }); // 4x ACOG optic
+    const lensMat = new THREE.MeshBasicMaterial({ color: 0x2288ff }); // Blue anti-reflective lens reflection
+    const handMat = new THREE.MeshLambertMaterial({ color: 0xd9a87e }); // Operator hands
+    const stockMat = new THREE.MeshLambertMaterial({ color: 0x202224 }); // Polymer Crane Stock
 
-    // Gun body
-    this.fppGunMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.55), gunMat);
+    // 1. Receiver (Main body of the M416)
+    this.fppGunMesh = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.11, 0.42), receiverMat);
     this.fppGunMesh.position.set(0, 0, 0);
     this.fppWeaponGroup.add(this.fppGunMesh);
 
-    // Barrel
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 8), barrelMat);
+    // 2. Tactical Quad-Rail Handguard
+    const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.32), railMat);
+    handguard.position.set(0, 0.01, -0.32);
+    this.fppWeaponGroup.add(handguard);
+
+    // 3. Free-Float Barrel with Flash Hider
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.35, 8), barrelMat);
     barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 0.02, -0.4);
+    barrel.position.set(0, 0.015, -0.56);
     this.fppWeaponGroup.add(barrel);
 
-    // Magazine
-    const mag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.08), gunMat);
-    mag.position.set(0, -0.12, -0.05);
+    const flashHider = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.06, 8), barrelMat);
+    flashHider.rotation.x = Math.PI / 2;
+    flashHider.position.set(0, 0.015, -0.74);
+    this.fppWeaponGroup.add(flashHider);
+
+    // 4. Curved 5.56mm 40-Round Extended Magazine
+    const mag = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.24, 0.09), gunMat);
+    mag.rotation.x = -0.18; // Classic curved forward angle of M4 STANAG magazine
+    mag.position.set(0, -0.14, -0.07);
     this.fppWeaponGroup.add(mag);
 
-    // Right Hand holding grip
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.1), handMat);
-    hand.position.set(0.02, -0.06, 0.12);
-    this.fppWeaponGroup.add(hand);
+    // 5. Ergonomic Tactical Pistol Grip
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.07), stockMat);
+    grip.rotation.x = -0.35; // Angled grip backwards
+    grip.position.set(0, -0.1, 0.14);
+    this.fppWeaponGroup.add(grip);
 
-    // Position weapon group in bottom-right of FPP view
+    // 6. Buffer Tube and Telescoping Crane Stock
+    const bufferTube = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.22, 8), gunMat);
+    bufferTube.rotation.x = Math.PI / 2;
+    bufferTube.position.set(0, 0.01, 0.28);
+    this.fppWeaponGroup.add(bufferTube);
+
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.14, 0.22), stockMat);
+    stock.position.set(0, -0.02, 0.38);
+    this.fppWeaponGroup.add(stock);
+
+    // 7. Tactical 4x ACOG Scope mounted on top rail
+    const scopeMount = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.035, 0.16), scopeMat);
+    scopeMount.position.set(0, 0.075, -0.05);
+    this.fppWeaponGroup.add(scopeMount);
+
+    const scopeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.22, 12), scopeMat);
+    scopeBody.rotation.x = Math.PI / 2;
+    scopeBody.position.set(0, 0.11, -0.06);
+    this.fppWeaponGroup.add(scopeBody);
+
+    const objectiveLens = new THREE.Mesh(new THREE.CircleGeometry(0.027, 12), lensMat);
+    objectiveLens.position.set(0, 0.11, -0.171);
+    this.fppWeaponGroup.add(objectiveLens);
+
+    // 8. Operator Hands
+    // Right hand gripping trigger
+    const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.1), handMat);
+    rightHand.position.set(0.02, -0.08, 0.12);
+    this.fppWeaponGroup.add(rightHand);
+
+    // Left hand supporting front handguard
+    const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.12), handMat);
+    leftHand.position.set(-0.04, -0.04, -0.28);
+    this.fppWeaponGroup.add(leftHand);
+
+    // Position M416 weapon group in bottom-right of FPP view
     this.fppWeaponGroup.position.set(0.24, -0.22, -0.5);
     this.camera.add(this.fppWeaponGroup);
   }
@@ -369,14 +421,14 @@ export class GameEngine {
     this.safeZone.currentRadius = 330;
     this.safeZone.targetCenterX = 0;
     this.safeZone.targetCenterZ = 0;
-    this.safeZone.targetRadius = 180;
+    this.safeZone.targetRadius = 220;
     this.safeZone.blueRadius = 330;
-    this.safeZone.timeRemaining = 2; // Starts shrinking immediately at match start
+    this.safeZone.timeRemaining = 120; // 2 minutes calm looting before shrinking begins
     this.safeZone.phaseDuration = 120;
-    this.safeZone.isShrinking = true;
+    this.safeZone.isShrinking = false; // Does not shrink at match start
     this.safeZone.phase = 1;
     this.safeZone.totalPhases = 5;
-    this.safeZone.damagePerSec = 2;
+    this.safeZone.damagePerSec = 1.5;
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -698,7 +750,7 @@ export class GameEngine {
       }
     } else {
       // Continue bot airplane drops if airplane is still traversing the island
-      if (this.planeMesh.position.z < 340) {
+      if (this.planeMesh.position.z < 380) {
         this.planeMesh.position.z += 55 * dt;
         this.botManager.updateAirplaneDrops(this.planeMesh.position);
       }
@@ -951,7 +1003,7 @@ export class GameEngine {
     }
 
     // UNLIMITED AMMO: Active clip ammo never decreases when shooting, and reserve ammo is locked to 999!
-    this.inventory.ammo['7.62mm'] = 999;
+    this.inventory.ammo['5.56mm'] = 999;
     this.callbacks.onInventoryChange({ ...this.inventory });
 
     this.shootCooldown = 1.0 / active.fireRate;
@@ -1041,7 +1093,7 @@ export class GameEngine {
 
     if (closestHit) {
       sound.playHitmarker(closestHit.isHeadshot);
-      const finalDmg = 100;
+      const finalDmg = 10;
       this.playerDamageDealt += finalDmg;
 
       const result = this.botManager.damageBot(
@@ -1054,8 +1106,8 @@ export class GameEngine {
 
       this.callbacks.onHitmarker(closestHit.isHeadshot, result.isDead);
 
-      // 1-HIT ELIMINATION NOTIFICATION
-      const testMsg = `[1-HIT KILL] Target: ${closestHit.bot.name} | Body Part: ${closestHit.hitPart} | Dist: ${Math.round(closestHit.dist)}m`;
+      // HIT NOTIFICATION
+      const testMsg = `[HIT] Target: ${closestHit.bot.name} | HP Left: ${Math.round(result.remainingHealth)} | Dist: ${Math.round(closestHit.dist)}m`;
       console.log(testMsg);
       this.callbacks.onPromptChange(testMsg);
       setTimeout(() => this.callbacks.onPromptChange(null), 2500);
@@ -1520,15 +1572,15 @@ export class GameEngine {
     this.playerPos.copy(this.planeMesh.position);
 
     this.inventory = {
-      ammo: { '7.62mm': 999 },
+      ammo: { '5.56mm': 999 },
       consumables: { first_aid: 4, medkit: 2, energy_drink: 5, painkiller: 3, bandage: 6 },
       helmetLevel: 2,
       armorLevel: 2,
       backpackLevel: 2,
-      weapon1: 'kar98k',
-      weapon1Ammo: 5,
-      weapon2: 'kar98k',
-      weapon2Ammo: 5,
+      weapon1: 'm4',
+      weapon1Ammo: 40,
+      weapon2: 'm4',
+      weapon2Ammo: 40,
       melee: null,
       activeSlot: 1,
     };

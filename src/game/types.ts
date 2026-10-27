@@ -3,14 +3,14 @@
  * Map: 1000m x 1000m (-500 to +500)
  */
 
-export type WeaponId = 'kar98k';
+export type WeaponId = 'm4';
 
-export type AmmoType = '7.62mm';
+export type AmmoType = '5.56mm';
 
 export interface WeaponDef {
   id: WeaponId;
   name: string;
-  category: 'Sniper';
+  category: 'Assault Rifle';
   ammoType?: AmmoType;
   magSize: number;
   damage: number;
@@ -26,22 +26,22 @@ export interface WeaponDef {
 }
 
 export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
-  kar98k: {
-    id: 'kar98k',
-    name: 'Kar98k',
-    category: 'Sniper',
-    ammoType: '7.62mm',
-    magSize: 5,
-    damage: 100, // 1 hit kill
-    fireRate: 0.9,
-    reloadTime: 3.2,
-    range: 500,
-    recoilPitch: 0.05,
-    recoilYaw: 0.012,
-    bulletSpeed: 760,
+  m4: {
+    id: 'm4',
+    name: 'M416',
+    category: 'Assault Rifle',
+    ammoType: '5.56mm',
+    magSize: 40,
+    damage: 100, // 1 hit elimination
+    fireRate: 11.5, // High fire-rate full-auto assault rifle
+    reloadTime: 2.1,
+    range: 450,
+    recoilPitch: 0.018,
+    recoilYaw: 0.007,
+    bulletSpeed: 880,
     scopeType: '4x',
-    zoomFov: 24,
-    description: 'Classic bolt-action sniper rifle. 1-hit elimination.',
+    zoomFov: 28,
+    description: 'Iconic M416 tactical assault rifle. Full-auto spray with 4x ACOG scope.',
   },
 };
 

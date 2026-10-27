@@ -155,8 +155,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider pt-2">Ammo Reserves</h3>
             <div className="grid grid-cols-1 gap-2 text-xs font-mono">
               <div className="p-2 rounded bg-stone-950/80 border border-stone-800 flex justify-between">
-                <span className="text-amber-400">7.62mm (Kar98k / Revolver)</span>
-                <span className="font-semibold text-stone-100">{inventory.ammo['7.62mm'] || 0}</span>
+                <span className="text-amber-400">5.56mm (M416)</span>
+                <span className="font-semibold text-stone-100">{inventory.ammo['5.56mm'] || 0}</span>
               </div>
             </div>
           </div>

@@ -80,6 +80,10 @@ export interface BotInstance {
   stuckTimer?: number;
   healingTimer?: number;
   healingItem?: 'first_aid' | 'medkit' | null;
+  duoId?: number;
+  isOutsideGuard?: boolean;
+  isInsideOccupant?: boolean;
+  guardPosition?: THREE.Vector3;
 }
 
 const BOT_NAMES = [
@@ -99,6 +103,7 @@ export class BotManager {
   private onKillFeed: (item: KillFeedItem) => void;
   private onSoundMade: (pos: THREE.Vector3, type: 'gunshot' | 'footstep') => void;
   private frameCounter = 0;
+  private reinforcementTimer = 10.0;
 
   constructor(
     scene: THREE.Scene,
@@ -116,7 +121,7 @@ export class BotManager {
    * Initialize bots that will fall from the airplane along the flight path
    */
   public spawnMatchBots(count = 59): void {
-    const weaponsPool: WeaponId[] = ['kar98k'];
+    const weaponsPool: WeaponId[] = ['m4'];
 
     // Famous Miramar Named Places dynamically constructed from the 4x scaled MAP_POIS array (-950 to 950)
     const MIRAMAR_POIS = MAP_POIS.map(p => ({
@@ -133,42 +138,61 @@ export class BotManager {
       const weaponDef = WEAPON_DEFS[assignedWeapon];
 
       const { botMesh, parachuteMesh, shadowMesh, knockedIndicator, leftLeg, rightLeg } = this.createBotMesh();
-      botMesh.visible = false; // Set to false initially! They only become visible when they drop from the airplane!
-      shadowMesh.visible = false;
+      // ENEMIES ARE ALREADY ON THE GROUND FROM MATCH START!
+      botMesh.visible = true;
+      shadowMesh.visible = true;
+      parachuteMesh.visible = false;
       knockedIndicator.visible = false;
       this.scene.add(botMesh);
       this.scene.add(shadowMesh);
 
-      // Allocate bot to POIs with cap constraints
-      let selectedPoi = MIRAMAR_POIS.find(p => p.currentBots < p.maxBots);
-      if (!selectedPoi) {
-        selectedPoi = MIRAMAR_POIS[Math.floor(Math.random() * MIRAMAR_POIS.length)];
+      const duoId = Math.floor(botIndex / 2);
+      let targetX = 0;
+      let targetZ = 0;
+
+      if (botIndex % 2 === 1 && this.bots[botIndex - 1]) {
+        // Duo Partner: spawn tactical proximity to partner (8-14m away)
+        const partnerPos = this.bots[botIndex - 1].position;
+        const offsetAngle = Math.random() * Math.PI * 2;
+        const offsetDist = 8 + Math.random() * 8;
+        targetX = Math.max(-315, Math.min(315, partnerPos.x + Math.cos(offsetAngle) * offsetDist));
+        targetZ = Math.max(-315, Math.min(315, partnerPos.z + Math.sin(offsetAngle) * offsetDist));
+      } else {
+        // Allocate Duo team to POIs with cap constraints
+        let selectedPoi = MIRAMAR_POIS.find(p => p.currentBots < p.maxBots);
+        if (!selectedPoi) {
+          selectedPoi = MIRAMAR_POIS[Math.floor(Math.random() * MIRAMAR_POIS.length)];
+        }
+        selectedPoi.currentBots += 2;
+
+        // Coordinate offset within the POI
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 8 + Math.random() * 45;
+        targetX = Math.max(-315, Math.min(315, selectedPoi.x + Math.cos(angle) * radius));
+        targetZ = Math.max(-315, Math.min(315, selectedPoi.z + Math.sin(angle) * radius));
       }
-      selectedPoi.currentBots++;
 
-      // Precise coordinate offset within 65m of the POI center
-      const angle = Math.random() * Math.PI * 2;
-      const radius = Math.random() * 65;
-      let targetX = selectedPoi.x + Math.cos(angle) * radius;
-      let targetZ = selectedPoi.z + Math.sin(angle) * radius;
+      const groundY = resolveWorldHeight(new THREE.Vector3(targetX, 0, targetZ), getTerrainHeight, this.worldBuilder.colliders);
 
-      // Clamp to playable map boundaries of 700m map (-315 to 315) so NO bots land in the outer zone/ocean!
-      targetX = Math.max(-315, Math.min(315, targetX));
-      targetZ = Math.max(-315, Math.min(315, targetZ));
+      // Place bot directly on the ground
+      botMesh.position.set(targetX, groundY, targetZ);
+      shadowMesh.position.set(targetX, groundY + 0.05, targetZ);
 
-      const groundY = getTerrainHeight(targetX, targetZ);
-
-      // Drops 100m-180m before target Z to glide realistically inside 700m bounds!
-      const dropZ = Math.max(-315, Math.min(315, targetZ - 100 - Math.random() * 80));
+      // Patrol target nearby
+      const wanderAngle = Math.random() * Math.PI * 2;
+      const wanderDist = 15 + Math.random() * 30;
+      const pTargetX = Math.max(-315, Math.min(315, targetX + Math.cos(wanderAngle) * wanderDist));
+      const pTargetZ = Math.max(-315, Math.min(315, targetZ + Math.sin(wanderAngle) * wanderDist));
+      const pTargetY = getTerrainHeight(pTargetX, pTargetZ);
 
       const bot: BotInstance = {
         id: `bot_${botIndex}`,
         name,
         position: botMesh.position,
-        velocity: new THREE.Vector3(0, -18, 0),
-        targetPosition: new THREE.Vector3(targetX, groundY, targetZ),
-        dropZ,
-        hasDropped: false,
+        velocity: new THREE.Vector3(0, 0, 0),
+        targetPosition: new THREE.Vector3(pTargetX, pTargetY, pTargetZ),
+        dropZ: 0,
+        hasDropped: true,
         rotationY: Math.random() * Math.PI * 2,
         health: 100,
         maxHealth: 100,
@@ -177,8 +201,8 @@ export class BotManager {
         helmetLevel: Math.random() > 0.6 ? 2 : 1,
         weapon: assignedWeapon,
         weaponDef,
-        state: 'in_plane',
-        stateTimer: 0,
+        state: Math.random() > 0.45 ? 'patrolling' : 'looting',
+        stateTimer: 4 + Math.random() * 6,
         shootCooldown: 1.2 + Math.random() * 1.5,
         reactionTimer: 1.2,
         targetEnemy: null,
@@ -201,8 +225,13 @@ export class BotManager {
         rightLeg,
         walkTimer: Math.random() * 10,
         footstepTimer: Math.random() * 0.35,
+        duoId,
+        isOutsideGuard: botIndex % 2 === 0,
+        isInsideOccupant: botIndex % 2 === 1,
+        guardPosition: botMesh.position.clone(),
       };
 
+      botMesh.rotation.y = bot.rotationY;
       this.bots.push(bot);
     }
   }
@@ -398,6 +427,17 @@ export class BotManager {
     this.frameCounter++;
     const activeBots = this.bots.filter(b => b.state !== 'dead' && b.state !== 'in_plane');
     const isPlayerInside = isPositionInsideBuilding(playerPos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
+
+    // POPULATION KEEPER: Maintain healthy enemy presence in the active safe zone
+    this.reinforcementTimer -= dt;
+    if (this.reinforcementTimer <= 0 && gamePhase === 'ground') {
+      this.reinforcementTimer = 14.0;
+      const aliveEnemies = this.bots.filter(b => b.state !== 'dead').length;
+      if (aliveEnemies < 14) {
+        const toSpawn = Math.min(3, 16 - aliveEnemies);
+        this.spawnSafeZoneReinforcements(safeCenterX, safeCenterZ, safeRadius, toSpawn);
+      }
+    }
 
     // FOOLPROOF SAFETY SWEEP: Hide dead/in-plane bots to prevent static "ghost" models
     const hiddenBots = this.bots.filter(b => b.state === 'dead' || b.state === 'in_plane');
@@ -632,7 +672,7 @@ export class BotManager {
       const isInBlueZone = distToZoneCenter > blueRadius;
       
       if (isInBlueZone) {
-        bot.health -= 12 * dt; // Faster damage in blue zone
+        bot.health -= 2.0 * dt; // Fair blue zone damage for bots
         
         // IMMEDIATE FLEE BEHAVIOR
         if (bot.state !== 'fleeing_zone') {
@@ -664,47 +704,22 @@ export class BotManager {
         }
       }
 
-      // STEP 1: FIRST PRIORITY - SEARCH FOR AND ENGAGE OTHER BOTS!
-      // Bots will actively search for other bots and eliminate them before considering the player.
-      for (let j = 0; j < activeBots.length; j++) {
-        if (i === j) continue;
-        const other = activeBots[j];
-        if (other.state === 'dead' || other.state === 'in_plane') continue;
+      // SCAN FOR PLAYER
+      const isPlayerTargetable = playerHealth > 0 && 
+                                 gamePhase === 'ground' && 
+                                 !isPlayerInside && 
+                                 !isPlayerInLandingGrace;
 
-        const d = bot.position.distanceTo(other.position);
-        if (d > 120) continue; // Scan entire 120m combat zone
+      if (isPlayerTargetable && distToPlayer <= 120.0) {
+        const botEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
+        const playerTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
+        const playerEyePos = new THREE.Vector3(playerPos.x, playerPos.y + playerTargetHeight, playerPos.z);
+        const hasSightToPlayer = checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
 
-        // Sticky bias if already fighting this enemy bot to prevent twitching
-        const stickiness = (bot.targetEnemy === other.id) ? -25 : 0;
-        if (d + stickiness < shortestDist) {
-          const hasSightToOther = checkLineOfSight(bot.position, other.position, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
-          if (hasSightToOther) {
-            shortestDist = d + stickiness;
-            foundOpponentPos = other.position;
-            foundOpponentId = other.id;
-            foundOpponentType = 'bot';
-          }
-        }
-      }
-
-      // STEP 2: SECOND PRIORITY - ONLY IF NO OTHER BOT CAN BE FOUND, CHECK IF PLAYER IS VISIBLE
-      if (!foundOpponentId) {
-        const isPlayerTargetable = playerHealth > 0 && 
-                                   gamePhase === 'ground' && 
-                                   !isPlayerInside && 
-                                   !isPlayerInLandingGrace;
-
-        if (isPlayerTargetable && distToPlayer <= 120.0) {
-          const botEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
-          const playerTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
-          const playerEyePos = new THREE.Vector3(playerPos.x, playerPos.y + playerTargetHeight, playerPos.z);
-          const hasSightToPlayer = checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
-
-          if (hasSightToPlayer) {
-            foundOpponentPos = playerPos;
-            foundOpponentId = 'player';
-            foundOpponentType = 'player';
-          }
+        if (hasSightToPlayer) {
+          foundOpponentPos = playerPos;
+          foundOpponentId = 'player';
+          foundOpponentType = 'player';
         }
       }
 
@@ -891,20 +906,20 @@ export class BotManager {
                 }
 
                 if (isHit) {
-                  // Enemies kill player in 5 hits (100 HP / 20 = 5 hits)
-                  const rawDmg = 20;
+                  // Player knocks down in 6 hits (100 HP / 6 = 16.67 damage per hit)
+                  const rawDmg = 100 / 6;
                   onPlayerDamage(rawDmg, bot.name, bot.weapon);
                 }
               }
             }
           }
         } else if (bot.targetEnemy !== 'player' && distToEnemy < 120 && !isInside) {
-          // Bot vs Bot fight (disciplined burst)
+          // Bot vs Bot fight (disciplined burst with prolonged combat)
           if (bot.burstCount > 0) {
             bot.burstTimer -= dt;
             if (bot.burstTimer <= 0) {
               bot.burstCount--;
-              bot.burstTimer = 0.15;
+              bot.burstTimer = 0.22;
 
               sound.playGunshot(bot.weapon, true, distToPlayer);
               this.onSoundMade(bot.position, 'gunshot');
@@ -915,19 +930,27 @@ export class BotManager {
                 const hasSight = checkLineOfSight(bot.position, otherBot.position, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
                 if (hasSight) {
                   const botMuzzle = bot.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-                  const otherTarget = otherBot.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                  const isHit = Math.random() < 0.42;
+                  const otherTarget = isHit
+                    ? otherBot.position.clone().add(new THREE.Vector3(0, 1.2, 0))
+                    : otherBot.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.5, 1.2, (Math.random() - 0.5) * 2.5));
+
                   if (this.onBulletTracer) {
-                    this.onBulletTracer(botMuzzle, otherTarget, true);
+                    this.onBulletTracer(botMuzzle, otherTarget, isHit);
                   }
-                  const dmgPerShot = 50;
-                  const result = this.damageBot(otherBot.id, dmgPerShot, Math.random() > 0.85, bot.name, bot.weaponDef.name);
-                  if (result.isDead) {
-                    bot.kills++;
-                    bot.health = 100;
-                    bot.state = 'looting';
-                    bot.targetEnemy = null; // Target eliminated: scan for next bot!
-                    bot.stateTimer = 4;
-                    bot.burstCount = 0;
+
+                  if (isHit) {
+                    const isHeadshot = Math.random() < 0.15;
+                    const dmgPerShot = (14 + Math.floor(Math.random() * 5)) * (isHeadshot ? 1.5 : 1.0);
+                    const result = this.damageBot(otherBot.id, dmgPerShot, isHeadshot, bot.name, bot.weaponDef.name);
+                    if (result.isDead) {
+                      bot.kills++;
+                      bot.health = 100;
+                      bot.state = 'looting';
+                      bot.targetEnemy = null; // Target eliminated: scan for next bot!
+                      bot.stateTimer = 7.0 + Math.random() * 4.0;
+                      bot.burstCount = 0;
+                    }
                   }
                 } else {
                   bot.burstCount = 0;
@@ -935,11 +958,11 @@ export class BotManager {
               }
 
               if (bot.burstCount <= 0) {
-                bot.shootCooldown = 0.8;
+                bot.shootCooldown = 2.0 + Math.random() * 1.5;
               }
             }
           } else if (bot.shootCooldown <= 0) {
-            bot.burstCount = 4;
+            bot.burstCount = 3 + Math.floor(Math.random() * 2);
             bot.burstTimer = 0;
           }
         }
@@ -975,6 +998,10 @@ export class BotManager {
 
       // 7. PATROLLING / LOOTING / FLEEING ZONE
       else {
+        if (bot.isOutsideGuard && bot.guardPosition && bot.state !== 'fleeing_zone') {
+          bot.targetPosition.copy(bot.guardPosition);
+        }
+
         if (bot.stateTimer <= 0) {
           // PRO-ACTIVE ZONE SURVIVAL: Move to safety BEFORE taking damage
           const distToZoneCenter = Math.hypot(bot.position.x - safeCenterX, bot.position.z - safeCenterZ);
@@ -1078,14 +1105,22 @@ export class BotManager {
     damage: number,
     isHeadshot: boolean,
     killerName = 'You',
-    weaponUsed = 'Kar98k'
+    weaponUsed = 'M416'
   ): { isDead: boolean; isKnocked: boolean; remainingHealth: number } {
     const bot = this.bots.find(b => b.id === botId && b.state !== 'dead');
     if (!bot) return { isDead: true, isKnocked: false, remainingHealth: 0 };
 
-    // 1-HIT KILL: Any shot from Kar98k or Revolver instantly eliminates the enemy!
-    this.killBot(bot, killerName, weaponUsed, isHeadshot, killerName === 'You');
-    return { isDead: true, isKnocked: false, remainingHealth: 0 };
+    const isPlayerKiller = killerName === 'You' || killerName === 'Player';
+
+    // Real HP reduction (10 hits to kill enemy when damage is 10)
+    bot.health -= damage;
+    if (bot.health <= 0) {
+      bot.health = 0;
+      this.killBot(bot, killerName, weaponUsed, isHeadshot, isPlayerKiller);
+      return { isDead: true, isKnocked: false, remainingHealth: 0 };
+    }
+
+    return { isDead: false, isKnocked: false, remainingHealth: bot.health };
   }
 
   private killBot(
@@ -1137,8 +1172,8 @@ export class BotManager {
     this.worldBuilder.lootItems.push({
       id: `deathcrate_ammo_${bot.id}`,
       type: 'ammo',
-      itemId: bot.weaponDef.ammoType || '7.62mm',
-      name: `${bot.weaponDef.ammoType || '7.62mm'} Ammo (60)`,
+      itemId: bot.weaponDef.ammoType || '5.56mm',
+      name: `${bot.weaponDef.ammoType || '5.56mm'} Ammo (60)`,
       amount: 60,
       position: crateGroup.position,
     });
@@ -1153,7 +1188,7 @@ export class BotManager {
   }
 
   public spawnFreshEnemyNear(playerPos: THREE.Vector3): void {
-    const weaponsPool: WeaponId[] = ['kar98k'];
+    const weaponsPool: WeaponId[] = ['m4'];
     const assignedWeapon = weaponsPool[Math.floor(Math.random() * weaponsPool.length)];
     const weaponDef = WEAPON_DEFS[assignedWeapon];
     const botIndex = this.bots.length + 1;
@@ -1171,9 +1206,10 @@ export class BotManager {
     const dist = 35 + Math.random() * 25;
     const rx = playerPos.x + Math.cos(angle) * dist;
     const rz = playerPos.z + Math.sin(angle) * dist;
-    const groundY = getTerrainHeight(rx, rz);
+    const groundY = resolveWorldHeight(new THREE.Vector3(rx, 0, rz), getTerrainHeight, this.worldBuilder.colliders);
 
     botMesh.position.set(rx, groundY, rz);
+    shadowMesh.position.set(rx, groundY + 0.05, rz);
 
     const bot: BotInstance = {
       id: `bot_fresh_${Date.now()}_${botIndex}`,
@@ -1220,16 +1256,92 @@ export class BotManager {
     this.bots.push(bot);
   }
 
-  public cleanupAndReplaceUnfindable(playerPos: THREE.Vector3): void {
-    for (const b of this.bots) {
-      if (b.state !== 'dead' && b.position.distanceTo(playerPos) > 220) {
-        b.state = 'dead';
-        this.scene.remove(b.mesh);
-        this.scene.remove(b.shadowMesh);
-        if (b.parachuteMesh) this.scene.remove(b.parachuteMesh);
-      }
+  /**
+   * Drops fresh reinforcement bots into the safe zone to ensure the match stays active and populated!
+   */
+  public spawnSafeZoneReinforcements(
+    safeCenterX: number,
+    safeCenterZ: number,
+    safeRadius: number,
+    count: number
+  ): void {
+    const weaponsPool: WeaponId[] = ['m4'];
+
+    for (let i = 0; i < count; i++) {
+      const assignedWeapon = weaponsPool[Math.floor(Math.random() * weaponsPool.length)];
+      const weaponDef = WEAPON_DEFS[assignedWeapon];
+      const botIndex = this.bots.length + 1;
+      const name = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)] + `_${botIndex}`;
+
+      const { botMesh, parachuteMesh, shadowMesh, knockedIndicator, leftLeg, rightLeg } = this.createBotMesh();
+      botMesh.visible = true;
+      shadowMesh.visible = true;
+      knockedIndicator.visible = false;
+      parachuteMesh.visible = false; // Directly on the ground without parachute
+      this.scene.add(botMesh);
+      this.scene.add(shadowMesh);
+
+      // Target position directly within the safe zone
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 25 + Math.random() * Math.max(25, safeRadius * 0.65);
+      const targetX = safeCenterX + Math.cos(angle) * dist;
+      const targetZ = safeCenterZ + Math.sin(angle) * dist;
+      const groundY = resolveWorldHeight(new THREE.Vector3(targetX, 0, targetZ), getTerrainHeight, this.worldBuilder.colliders);
+
+      // Position directly on the ground
+      botMesh.position.set(targetX, groundY, targetZ);
+      shadowMesh.position.set(targetX, groundY + 0.05, targetZ);
+
+      const bot: BotInstance = {
+        id: `bot_reinforce_${Date.now()}_${botIndex}_${i}`,
+        name,
+        position: botMesh.position,
+        velocity: new THREE.Vector3(0, 0, 0),
+        targetPosition: new THREE.Vector3(targetX + (Math.random() - 0.5) * 25, groundY, targetZ + (Math.random() - 0.5) * 25),
+        dropZ: 0,
+        hasDropped: true,
+        rotationY: Math.random() * Math.PI * 2,
+        health: 100,
+        maxHealth: 100,
+        knockedHealth: 100,
+        armorLevel: 2,
+        helmetLevel: 2,
+        weapon: assignedWeapon,
+        weaponDef,
+        state: 'patrolling', // Directly patrolling on the ground
+        stateTimer: 6,
+        shootCooldown: 1.5,
+        reactionTimer: 1.5,
+        targetEnemy: null,
+        targetEnemyType: 'player',
+        kills: 0,
+        jiggleTimer: 0,
+        jiggleDirection: 1,
+        isCrouching: false,
+        crouchTimer: 0,
+        soundSearchPos: null,
+        soundSearchTimer: 0,
+        burstCount: 0,
+        burstTimer: 0,
+        activeVehicleId: null,
+        mesh: botMesh,
+        parachuteMesh,
+        shadowMesh,
+        knockedIndicator,
+        leftLeg,
+        rightLeg,
+        walkTimer: 0,
+        footstepTimer: 0,
+      };
+
+      botMesh.rotation.y = bot.rotationY;
+
+      this.bots.push(bot);
     }
-    if (this.getAliveCount() < 2) {
+  }
+
+  public cleanupAndReplaceUnfindable(playerPos: THREE.Vector3): void {
+    if (this.getAliveCount() < 4) {
       this.spawnFreshEnemyNear(playerPos);
     }
   }

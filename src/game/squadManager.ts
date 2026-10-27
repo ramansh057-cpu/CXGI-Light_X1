@@ -81,7 +81,16 @@ export class SquadManager {
   }
 
   public initTeammates(): void {
-    const teammateConfigs: any[] = [];
+    const teammateConfigs = [
+      {
+        number: 2 as const,
+        name: 'Phoenix',
+        colorHex: 0x00f0ff, // Vibrant Cyan #2 for Duo Partner
+        weapon: 'm4' as const,
+        role: 'assault' as const,
+        patrolOffset: { x: 10, z: 10 },
+      },
+    ];
 
     teammateConfigs.forEach((cfg) => {
       const { botMesh, parachuteMesh, shadowMesh, overheadMarker, knockedIndicator, leftLeg, rightLeg } =
@@ -240,7 +249,7 @@ export class SquadManager {
     });
 
     if (this.onVoiceCallout) {
-      this.onVoiceCallout('Alpha_99', 'Dropping in hot! Spread out and loot!');
+      this.onVoiceCallout('Phoenix', 'Duo partner dropping in with you! Watch your six!');
     }
   }
 
@@ -494,6 +503,8 @@ export class SquadManager {
                     this.onVoiceCallout(tm.member.name, 'Enemy eliminated!');
                   }
                   tm.burstCount = 0;
+                } else if (Math.random() < 0.22) {
+                  this.damageTeammate(tm, 18, closestEnemy.name, closestEnemy.weaponDef.name);
                 }
               } else {
                 tm.burstCount = 0; // bullet hit wall
