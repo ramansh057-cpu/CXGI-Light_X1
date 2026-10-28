@@ -503,6 +503,11 @@ export class SquadManager {
                     this.onVoiceCallout(tm.member.name, 'Enemy eliminated!');
                   }
                   tm.burstCount = 0;
+                } else if (result.isKnocked) {
+                  if (this.onVoiceCallout) {
+                    this.onVoiceCallout(tm.member.name, 'Enemy knocked down!');
+                  }
+                  tm.burstCount = 0;
                 } else if (Math.random() < 0.22) {
                   this.damageTeammate(tm, 18, closestEnemy.name, closestEnemy.weaponDef.name);
                 }

@@ -168,16 +168,16 @@ export interface POILocation {
 }
 
 export const MAP_POIS: POILocation[] = [
-  { name: 'Pecado (Center)', x: 0, z: 0, radius: 75, type: 'city' },
-  { name: 'Los Leones', x: 180, z: 220, radius: 90, type: 'city' },
-  { name: 'San Martin Suburbs', x: -100, z: -180, radius: 70, type: 'residential' },
-  { name: 'El Pozo Industrial', x: -220, z: -130, radius: 75, type: 'port' },
-  { name: 'Ruins Plateau', x: -180, z: 130, radius: 60, type: 'ruins' },
-  { name: 'Hacienda del Patron', x: -220, z: 40, radius: 55, type: 'city' },
-  { name: 'Military Camp', x: 130, z: -220, radius: 55, type: 'military' },
-  { name: 'Minas de Carbón', x: 220, z: -90, radius: 55, type: 'compound' },
-  { name: 'Chumacera Valley', x: -130, z: -40, radius: 60, type: 'residential' },
-  { name: 'Valle del Mar', x: 220, z: 180, radius: 45, type: 'compound' },
+  { name: 'Science Center (Nusa)', x: 0, z: 0, radius: 85, type: 'city' },
+  { name: 'Nusa Cyber Center', x: 180, z: 220, radius: 90, type: 'city' },
+  { name: 'Resort Science Labs', x: -100, z: -180, radius: 75, type: 'residential' },
+  { name: 'Nusa Tech Port', x: -220, z: -130, radius: 75, type: 'port' },
+  { name: 'Observatory Plateau', x: -180, z: 130, radius: 60, type: 'ruins' },
+  { name: 'Bio-Tech Headquarters', x: -220, z: 40, radius: 65, type: 'city' },
+  { name: 'Defense Science Complex', x: 130, z: -220, radius: 65, type: 'military' },
+  { name: 'Advanced Reactor Compound', x: 220, z: -90, radius: 55, type: 'compound' },
+  { name: 'Science Valley Villas', x: -130, z: -40, radius: 60, type: 'residential' },
+  { name: 'Coastal Research Facility', x: 220, z: 180, radius: 45, type: 'compound' },
 ];
 
 export interface SafeZoneState {
@@ -216,10 +216,10 @@ const isTouchDevice =
   (('ontouchstart' in window) || (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0)));
 
 export const DEFAULT_GRAPHIC_SETTINGS: GraphicSettings = {
-  shadowMode: 'simple_blob', // default to ultra-light blob shadows for older laptops
-  renderScale: 0.35, // Lower resolution for vintage pixel look and high performance
+  shadowMode: 'directional_fast', // Clean shadows for clear depth and visual fidelity
+  renderScale: 1.0, // 100% full crystal clear native resolution
   targetFps: 60, // Locked to 60 FPS
-  drawDistance: 180,
+  drawDistance: 900, // 900m long-range draw distance for clear island vision
   showTouchControls: isTouchDevice,
   showMinimap: true,
   mouseSensitivity: 1.0,

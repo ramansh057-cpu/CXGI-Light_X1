@@ -311,146 +311,160 @@ export class WorldBuilder {
     const floorMat = new THREE.MeshLambertMaterial({ color: 0x6e5c50 }); // Dark rustic stone
     const containerColors = [0xb83828, 0x2b578c, 0xc78a1a, 0x2d7a46];
 
-    // 4a. PECADO METROPOLIS (Central sprawling city: houses, boxing arena, casino)
-    for (let row = -2; row <= 2; row++) {
-      for (let col = -2; col <= 2; col++) {
-        if (row === 0 && col === 0) continue; // leave central square open
-        if (row === 0 && col === -1) continue; // leave room for casino next to arena
-        const bx = col * 32 + (Math.sin(row) * 4);
-        const bz = row * 32 + (Math.cos(col) * 4);
-        this.buildHouse(bx, bz, 4, wallWhiteMat, roofMat, floorMat);
-      }
-    }
-    // Pecado Boxing Arena (Stadium) in the center
-    this.buildPecadoArena(0, 0, wallWhiteMat, wallBrickMat);
-    // Pecado Casino next to it
-    this.buildPecadoCasino(-36, 0, wallBrickMat, roofMat);
+    // 4a. NUSA CENTRAL METROPOLIS (Monumental Science Center, Cybernetics Tower, Robotics Arena & Grand Pavilions)
+    // Monumental Science Center right at the epicenter!
+    this.buildScienceCenter(0, 0);
 
-    // 4b. MILITARY BASE (Radar dome, long barracks, bunkers)
+    // Surrounding Big Multi-Story Science Pavilions (Spacious 64m-72m avenues for vehicles and tactical gunfights)
+    const centralPavilions = [
+      { x: -64, z: -64, floors: 4 },
+      { x: 0, z: -72, floors: 4 },
+      { x: 64, z: -64, floors: 4 },
+      { x: -64, z: 64, floors: 4 },
+      { x: 0, z: 72, floors: 4 },
+      { x: 64, z: 64, floors: 4 },
+      { x: -128, z: 0, floors: 3 },
+      { x: 128, z: 0, floors: 3 },
+    ];
+    for (const p of centralPavilions) {
+      this.buildHouse(p.x, p.z, p.floors, wallWhiteMat, roofMat, floorMat);
+    }
+
+    // High-Tech Cybernetics Research Tower to the West
+    this.buildPecadoCasino(-72, 0, wallBrickMat, roofMat);
+
+    // Colossal Robotics Testing Arena to the East
+    this.buildPecadoArena(72, 0, wallWhiteMat, wallBrickMat);
+
+    // 4b. DEFENSE SCIENCE COMPLEX & MILITARY BASE (Radar dome, giant science hangars, science academy)
     const mbX = 220;
     const mbZ = 280;
-    // 3 Long Barracks
-    this.buildBarracks(mbX - 35, mbZ - 20, wallMilitaryMat, roofMat);
-    this.buildBarracks(mbX + 35, mbZ - 20, wallMilitaryMat, roofMat);
-    this.buildBarracks(mbX, mbZ + 35, wallMilitaryMat, roofMat);
-    // Radar Tower
-    this.buildRadarTower(mbX, mbZ - 45);
+    // 3 Giant Nusa Science Research Hangars (46m length x 22m width x 8m height)
+    this.buildBarracks(mbX - 52, mbZ - 20, wallMilitaryMat, roofMat);
+    this.buildBarracks(mbX + 52, mbZ - 20, wallMilitaryMat, roofMat);
+    this.buildBarracks(mbX, mbZ + 55, wallMilitaryMat, roofMat);
+    // Monumental Radar Tower
+    this.buildRadarTower(mbX, mbZ - 55);
+    // Defense Science Academy Block
+    this.buildSchoolComplex(mbX - 8, mbZ - 110, wallMilitaryMat, floorMat);
 
-    // 4c. CHUMACERA INDUSTRIAL FACTORY (Silos, shipping containers & warehouse frames)
+    // 4c. NUSA TECH PORT & INDUSTRIAL FACTORY (Giant shipping containers, science storage units)
     const gpX = -320;
     const gpZ = -180;
     let colorIdx = 0;
     for (let i = 0; i < 28; i++) {
-      const cx = gpX + (i % 7) * 16 - 48;
-      const cz = gpZ + Math.floor(i / 7) * 22 - 30;
+      const cx = gpX + (i % 7) * 22 - 66;
+      const cz = gpZ + Math.floor(i / 7) * 28 - 42;
       const cMat = new THREE.MeshLambertMaterial({ color: containerColors[colorIdx++ % containerColors.length] });
       this.buildShippingContainer(cx, cz, cMat);
-      // Stack some containers
+      // Stack some containers for high-ground verticality
       if (i % 3 === 0) {
-        this.buildShippingContainer(cx, cz, cMat, 3.2);
+        this.buildShippingContainer(cx, cz, cMat, 4.0);
       }
     }
 
-    // 4d. HACIENDA DEL PATRÓN (Mansion & surrounding compounds)
+    // 4d. RESORT SCIENCE LABS & BIO-TECH HEADQUARTERS (Massive 58m x 58m complex & science villas)
     const scX = -120;
     const scZ = -200;
     this.buildHaciendaVilla(scX, scZ, wallWhiteMat, roofMat);
-    // Surrounding guest houses of Hacienda
-    for (let i = 0; i < 4; i++) {
-      const hx = scX + 45 + (i % 2) * 26;
-      const hz = scZ + Math.floor(i / 2) * 26;
-      this.buildHouse(hx, hz, 4, wallWhiteMat, roofMat, floorMat);
-    }
+    // Surrounding Grand Science Villas of Resort Labs
+    this.buildHouse(scX + 68, scZ - 32, 4, wallWhiteMat, roofMat, floorMat);
+    this.buildHouse(scX + 68, scZ + 32, 4, wallWhiteMat, roofMat, floorMat);
+    this.buildHouse(scX - 68, scZ - 32, 4, wallBrickMat, roofMat, floorMat);
+    this.buildHouse(scX - 68, scZ + 32, 4, wallBrickMat, roofMat, floorMat);
 
-    // 4e. LOS LEONES SKELETONS METROPOLIS (Unfinished Brick/Concrete Buildings)
+    // 4e. LOS LEONES SKELETONS METROPOLIS (Giant 5-Story Unfinished Futuristic Skyscraper Skeletons)
     const ruX = -240;
     const ruZ = 120;
-    // 3 Tall Unfinished Construction Skeletons
+    // 3 Massive 5-Story Construction Skeletons
     this.buildLosLeonesSkeleton(ruX, ruZ, wallBrickMat);
-    this.buildLosLeonesSkeleton(ruX + 35, ruZ - 25, wallWhiteMat);
-    this.buildLosLeonesSkeleton(ruX - 35, ruZ + 25, wallBrickMat);
+    this.buildLosLeonesSkeleton(ruX + 58, ruZ - 44, wallWhiteMat);
+    this.buildLosLeonesSkeleton(ruX - 58, ruZ + 44, wallBrickMat);
     const ruY = getTerrainHeight(ruX, ruZ);
     const stoneMat = new THREE.MeshLambertMaterial({ color: 0x8a877e });
     for (let i = 0; i < 16; i++) {
       const angle = (i / 16) * Math.PI * 2;
-      const px = ruX + Math.cos(angle) * 36;
-      const pz = ruZ + Math.sin(angle) * 36;
+      const px = ruX + Math.cos(angle) * 44;
+      const pz = ruZ + Math.sin(angle) * 44;
       const py = getTerrainHeight(px, pz);
-      const pillarGeo = new THREE.CylinderGeometry(1.2, 1.4, 7 + (i % 3) * 2, 6);
+      const pillarGeo = new THREE.CylinderGeometry(1.6, 2.0, 9 + (i % 3) * 2, 8);
       const pillar = new THREE.Mesh(pillarGeo, stoneMat);
-      pillar.position.set(px, py + 3.5, pz);
+      pillar.position.set(px, py + 4.5, pz);
       this.scene.add(pillar);
 
       this.colliders.push({
-        box: new THREE.Box3().setFromCenterAndSize(pillar.position, new THREE.Vector3(2.5, 8, 2.5)),
+        box: new THREE.Box3().setFromCenterAndSize(pillar.position, new THREE.Vector3(3.5, 10, 3.5)),
         type: 'rock',
       });
     }
 
-    // 4f. SHOOTING RANGE (Target barriers, sniper stand)
+    // 4f. DEFENSE OBSERVATION & SHOOTING RANGE (Sniper towers & science watchposts)
     const srX = 180;
     const srZ = -320;
     const srY = getTerrainHeight(srX, srZ);
-    const woodMat = new THREE.MeshLambertMaterial({ color: 0x5c4228 });
+    const steelTowerMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
     for (let i = 0; i < 4; i++) {
-      const tower = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 4), woodMat);
-      tower.position.set(srX - 30 + i * 20, srY + 4, srZ);
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(6, 12, 6), steelTowerMat);
+      tower.position.set(srX - 45 + i * 30, srY + 6, srZ);
       this.scene.add(tower);
       this.colliders.push({
-        box: new THREE.Box3().setFromCenterAndSize(tower.position, new THREE.Vector3(4, 8, 4)),
+        box: new THREE.Box3().setFromCenterAndSize(tower.position, new THREE.Vector3(6, 12, 6)),
         type: 'building',
       });
     }
 
-    // 4g. BUNKER SHELTER (Earth mound entrance with concrete tunnel frame)
+    // 4g. UNDERGROUND SCIENCE BUNKER (Reinforced blast vault entrance)
     const bkX = 280;
     const bkZ = -80;
     const bkY = getTerrainHeight(bkX, bkZ);
-    const bunkerArch = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 12), wallMilitaryMat);
-    bunkerArch.position.set(bkX, bkY + 2.5, bkZ);
+    const bunkerArch = new THREE.Mesh(new THREE.BoxGeometry(14, 7, 18), wallMilitaryMat);
+    bunkerArch.position.set(bkX, bkY + 3.5, bkZ);
     this.scene.add(bunkerArch);
-    const bunkerBox = new THREE.Box3().setFromCenterAndSize(bunkerArch.position, new THREE.Vector3(8, 5, 12));
+    const bunkerBox = new THREE.Box3().setFromCenterAndSize(bunkerArch.position, new THREE.Vector3(14, 7, 18));
     this.colliders.push({
       box: bunkerBox,
       type: 'building',
     });
     this.buildingBounds.push(bunkerBox);
 
-    // 4h. STARTING POINT OUTPOST (South Outpost Gate, x = 0, z = -850)
+    // 4h. STARTING POINT SCIENCE OUTPOST (South Outpost Gate, x = 0, z = -850)
     const sgX = 0;
     const sgZ = -850;
     const sgY = getTerrainHeight(sgX, sgZ);
     const wallColor = new THREE.MeshLambertMaterial({ color: 0xccb096 });
     this.buildHouse(sgX, sgZ, 4, wallWhiteMat, roofMat, floorMat);
-    this.buildHouse(sgX - 22, sgZ - 10, 4, wallBrickMat, roofMat, floorMat);
-    this.buildHouse(sgX + 22, sgZ + 10, 4, wallWhiteMat, roofMat, floorMat);
-    this.buildStandAloneWall(sgX - 35, sgY, sgZ, 2, 3.5, 40, wallColor); // West Compound Wall
-    this.buildStandAloneWall(sgX + 35, sgY, sgZ, 2, 3.5, 40, wallColor); // East Compound Wall
-    this.buildStandAloneWall(sgX, sgY, sgZ - 20, 70, 3.5, 2, wallColor); // South Compound Wall
-    this.buildStandAloneWall(sgX - 18, sgY, sgZ + 20, 24, 3.5, 2, wallColor); // North West Gate Wall
-    this.buildStandAloneWall(sgX + 18, sgY, sgZ + 20, 24, 3.5, 2, wallColor); // North East Gate Wall
+    this.buildHouse(sgX - 42, sgZ, 3, wallBrickMat, roofMat, floorMat);
+    this.buildHouse(sgX + 42, sgZ, 3, wallWhiteMat, roofMat, floorMat);
+    this.buildStandAloneWall(sgX - 70, sgY, sgZ, 2.5, 5.0, 70, wallColor); // West Compound Wall
+    this.buildStandAloneWall(sgX + 70, sgY, sgZ, 2.5, 5.0, 70, wallColor); // East Compound Wall
+    this.buildStandAloneWall(sgX, sgY, sgZ - 35, 140, 5.0, 2.5, wallColor); // South Compound Wall
+    this.buildStandAloneWall(sgX - 40, sgY, sgZ + 35, 50, 5.0, 2.5, wallColor); // North West Gate Wall
+    this.buildStandAloneWall(sgX + 40, sgY, sgZ + 35, 50, 5.0, 2.5, wallColor); // North East Gate Wall
 
-    // 4i. END POINT OUTPOST (North Outpost Gate, x = 0, z = 850)
+    // 4i. END POINT SCIENCE OUTPOST (North Outpost Gate, x = 0, z = 850)
     const ngX = 0;
     const ngZ = 850;
     const ngY = getTerrainHeight(ngX, ngZ);
-    this.buildHouse(ngX, ngZ, 2, wallBrickMat, roofMat, floorMat);
-    this.buildHouse(ngX - 22, ngZ - 10, 1, wallWhiteMat, roofMat, floorMat);
-    this.buildHouse(ngX + 22, ngZ + 10, 1, wallBrickMat, roofMat, floorMat);
-    this.buildStandAloneWall(ngX - 35, ngY, ngZ, 2, 3.5, 40, wallColor); // West Compound Wall
-    this.buildStandAloneWall(ngX + 35, ngY, ngZ, 2, 3.5, 40, wallColor); // East Compound Wall
-    this.buildStandAloneWall(ngX, ngY, ngZ + 20, 70, 3.5, 2, wallColor); // North Compound Wall
-    this.buildStandAloneWall(ngX - 18, ngY, ngZ - 20, 24, 3.5, 2, wallColor); // South West Gate Wall
-    this.buildStandAloneWall(ngX + 18, ngY, ngZ - 20, 24, 3.5, 2, wallColor); // South East Gate Wall
+    this.buildHouse(ngX, ngZ, 4, wallBrickMat, roofMat, floorMat);
+    this.buildHouse(ngX - 42, ngZ, 3, wallWhiteMat, roofMat, floorMat);
+    this.buildHouse(ngX + 42, ngZ, 3, wallBrickMat, roofMat, floorMat);
+    this.buildStandAloneWall(ngX - 70, ngY, ngZ, 2.5, 5.0, 70, wallColor); // West Compound Wall
+    this.buildStandAloneWall(ngX + 70, ngY, ngZ, 2.5, 5.0, 70, wallColor); // East Compound Wall
+    this.buildStandAloneWall(ngX, ngY, ngZ + 35, 140, 5.0, 2.5, wallColor); // North Compound Wall
+    this.buildStandAloneWall(ngX - 40, ngY, ngZ - 35, 50, 5.0, 2.5, wallColor); // South West Gate Wall
+    this.buildStandAloneWall(ngX + 40, ngY, ngZ - 35, 50, 5.0, 2.5, wallColor); // South East Gate Wall
   }
 
   /**
    * Procedural House with doorway, interior walls, stairs, and upper floor
    */
+  /**
+   * Big Nusa Science Complex (Pavilion) with double-doorways, glass bands, wide laboratory stairs, and rooftop deck
+   */
   private buildHouse(
     x: number,
     z: number,
-    floors = 1,
+    floors = 2,
     wallMat: THREE.Material,
     roofMat: THREE.Material,
     floorMat: THREE.Material
@@ -459,9 +473,13 @@ export class WorldBuilder {
     const houseGroup = new THREE.Group();
     houseGroup.position.set(x, y, z);
 
-    const width = 12;
-    const depth = 14;
-    const floorH = 3.4;
+    // Big Nusa Building Footprint (26m width x 28m depth x 4.4m floor height)
+    const width = 26;
+    const depth = 28;
+    const floorH = 4.4;
+
+    const glassMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const trimMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
 
     // 1. Foundation / Ground Floor
     const floorGeo = new THREE.BoxGeometry(width, 0.4, depth);
@@ -473,55 +491,62 @@ export class WorldBuilder {
     for (let f = 0; f < floors; f++) {
       const hBase = f * floorH;
 
-      // Front wall (with 2.5m door opening at center)
-      this.addWall(houseGroup, -4.75, hBase + floorH / 2, depth / 2, 2.5, floorH, 0.4, wallMat, x, y, z); // Front Left
-      this.addWall(houseGroup, 4.75, hBase + floorH / 2, depth / 2, 2.5, floorH, 0.4, wallMat, x, y, z);  // Front Right
-      this.addWall(houseGroup, 0, hBase + floorH - 0.4, depth / 2, 7.0, 0.8, 0.4, wallMat, x, y, z);    // Door Header
+      // Front wall with grand 6m wide central doorway
+      this.addWall(houseGroup, -8, hBase + floorH / 2, depth / 2, 10, floorH, 0.4, wallMat, x, y, z);
+      this.addWall(houseGroup, 8, hBase + floorH / 2, depth / 2, 10, floorH, 0.4, wallMat, x, y, z);
+      this.addWall(houseGroup, 0, hBase + floorH - 0.6, depth / 2, 6.0, 1.2, 0.4, trimMat, x, y, z);
 
-      // Back wall
-      this.addWall(houseGroup, 0, hBase + floorH / 2, -depth / 2, width, floorH, 0.4, wallMat, x, y, z);
+      // Back wall with rear 6m exit doorway for tactical flanking
+      this.addWall(houseGroup, -8, hBase + floorH / 2, -depth / 2, 10, floorH, 0.4, wallMat, x, y, z);
+      this.addWall(houseGroup, 8, hBase + floorH / 2, -depth / 2, 10, floorH, 0.4, wallMat, x, y, z);
+      this.addWall(houseGroup, 0, hBase + floorH - 0.6, -depth / 2, 6.0, 1.2, 0.4, trimMat, x, y, z);
 
-      // Left wall
+      // Left Wall
       this.addWall(houseGroup, -width / 2, hBase + floorH / 2, 0, 0.4, floorH, depth, wallMat, x, y, z);
 
-      // Right wall
+      // Right Wall
       this.addWall(houseGroup, width / 2, hBase + floorH / 2, 0, 0.4, floorH, depth, wallMat, x, y, z);
 
-      // Interior Wall (Room Divider)
+      // Cyan Solar Glass Windows on facade
+      const winFront = new THREE.Mesh(new THREE.BoxGeometry(16, 1.4, 0.2), glassMat);
+      winFront.position.set(0, hBase + floorH - 1.2, depth / 2 + 0.1);
+      houseGroup.add(winFront);
+
+      // Interior Lab Partition Wall (with wide 6m archway)
       if (f === 0) {
-        this.addWall(houseGroup, 0, hBase + floorH / 2, -2, 0.3, floorH, depth - 4, wallMat, x, y, z);
+        this.addWall(houseGroup, -7, hBase + floorH / 2, 0, 8, floorH, 0.3, wallMat, x, y, z);
+        this.addWall(houseGroup, 7, hBase + floorH / 2, 0, 8, floorH, 0.3, wallMat, x, y, z);
       }
 
       // Upper Floor Slab (if more floors)
       if (f < floors - 1) {
-        const upperFloor = new THREE.Mesh(new THREE.BoxGeometry(width - 4, 0.3, depth), floorMat);
-        upperFloor.position.set(2, hBase + floorH + 0.15, 0);
+        const upperFloor = new THREE.Mesh(new THREE.BoxGeometry(width - 6, 0.3, depth), floorMat);
+        upperFloor.position.set(3, hBase + floorH + 0.15, 0);
         houseGroup.add(upperFloor);
-        // Collider for floor
+
         this.colliders.push({
           box: new THREE.Box3().setFromCenterAndSize(
-            new THREE.Vector3(x + 2, y + hBase + floorH + 0.15, z),
-            new THREE.Vector3(width - 4, 0.3, depth)
+            new THREE.Vector3(x + 3, y + hBase + floorH + 0.15, z),
+            new THREE.Vector3(width - 6, 0.3, depth)
           ),
           type: 'building',
         });
 
-        // STAIRS - 8 Steps instead of a ramp for better AABB navigation
-        const stepWidth = 3.5;
-        const stepDepth = 1.0; // 8 / 8
+        // WIDE SCIENCE STAIRS - 8 Steps for smooth 4.4m climb
+        const stepWidth = 4.5;
+        const stepDepth = 1.6;
         const stepHeight = floorH / 8;
         for (let s = 0; s < 8; s++) {
           const stepGeo = new THREE.BoxGeometry(stepWidth, 0.4, stepDepth);
           const step = new THREE.Mesh(stepGeo, floorMat);
-          const stepZ = -4 + s * stepDepth;
+          const stepZ = -6 + s * stepDepth;
           const stepY = hBase + (s + 1) * stepHeight;
-          step.position.set(-width / 2 + 2.5, stepY, stepZ);
+          step.position.set(-width / 2 + 3.0, stepY, stepZ);
           houseGroup.add(step);
 
-          // Add collider for each step
           this.colliders.push({
             box: new THREE.Box3().setFromCenterAndSize(
-              new THREE.Vector3(x - width / 2 + 2.5, y + stepY, z + stepZ),
+              new THREE.Vector3(x - width / 2 + 3.0, y + stepY, z + stepZ),
               new THREE.Vector3(stepWidth, 0.4, stepDepth)
             ),
             type: 'building',
@@ -530,17 +555,50 @@ export class WorldBuilder {
       }
     }
 
-    // 3. Pitched Roof
-    const roofGeo = new THREE.ConeGeometry(Math.hypot(width, depth) * 0.6, 2.8, 4);
-    roofGeo.rotateY(Math.PI / 4);
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = (floors * floorH) + 1.4;
-    houseGroup.add(roof);
+    // 3. Modern Science Rooftop Observation Deck
+    const roofY = floors * floorH;
+    const roofDeck = new THREE.Mesh(new THREE.BoxGeometry(width, 0.4, depth), floorMat);
+    roofDeck.position.y = roofY + 0.2;
+    houseGroup.add(roofDeck);
+
+    this.colliders.push({
+      box: new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(x, y + roofY + 0.2, z),
+        new THREE.Vector3(width, 0.4, depth)
+      ),
+      type: 'building',
+    });
+
+    // Rooftop Security Parapet Rails
+    const railMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+    const pFront = new THREE.Mesh(new THREE.BoxGeometry(width, 1.1, 0.3), railMat);
+    pFront.position.set(0, roofY + 0.75, depth / 2);
+    houseGroup.add(pFront);
+    const pBack = new THREE.Mesh(new THREE.BoxGeometry(width, 1.1, 0.3), railMat);
+    pBack.position.set(0, roofY + 0.75, -depth / 2);
+    houseGroup.add(pBack);
+    const pLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, depth), railMat);
+    pLeft.position.set(-width / 2, roofY + 0.75, 0);
+    houseGroup.add(pLeft);
+    const pRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, depth), railMat);
+    pRight.position.set(width / 2, roofY + 0.75, 0);
+    houseGroup.add(pRight);
+
+    // Central Science Observatory Dome on roof
+    const domeMat = new THREE.MeshLambertMaterial({ color: 0x0284c7 });
+    const obsDome = new THREE.Mesh(new THREE.SphereGeometry(3.6, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+    obsDome.position.set(0, roofY + 0.4, 0);
+    houseGroup.add(obsDome);
+
+    // Science Antenna / Satellite Dish
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.5, 6), trimMat);
+    antenna.position.set(6, roofY + 2.4, -6);
+    houseGroup.add(antenna);
 
     this.scene.add(houseGroup);
 
     // Register house 3D building bounds for shelter and bullet blocking
-    const totalH = (floors * floorH) + 3.0;
+    const totalH = (floors * floorH) + 4.5;
     this.buildingBounds.push(
       new THREE.Box3().setFromCenterAndSize(
         new THREE.Vector3(x, y + totalH / 2, z),
@@ -549,11 +607,186 @@ export class WorldBuilder {
     );
 
     // Register indoor loot spawn points
-    this.houseSpawnPoints.push(new THREE.Vector3(x + 2, y + 0.5, z + 2));
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 2, y + 0.5, z - 2));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 5, y + 0.5, z + 5));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 5, y + 0.5, z + 5));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 5, y + 0.5, z - 5));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 5, y + 0.5, z - 5));
     if (floors > 1) {
-      this.houseSpawnPoints.push(new THREE.Vector3(x + 2, y + 3.8, z + 2));
+      this.houseSpawnPoints.push(new THREE.Vector3(x + 5, y + floorH + 0.5, z + 5));
+      this.houseSpawnPoints.push(new THREE.Vector3(x - 5, y + floorH + 0.5, z - 5));
+      this.houseSpawnPoints.push(new THREE.Vector3(x, y + roofY + 0.6, z + 6));
     }
+  }
+
+  /**
+   * Iconic Monumental Nusa Science Center
+   * Sprawling 64m x 54m mega-complex with central glass atrium, 
+   * twin research wings, elevated skybridge, grand pillars, and rooftop helipad!
+   */
+  public buildScienceCenter(x: number, z: number): void {
+    const y = getTerrainHeight(x, z);
+    const centerGroup = new THREE.Group();
+    centerGroup.position.set(x, y, z);
+
+    // High-tech Nusa materials
+    const whitePanelMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
+    const darkFrameMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const floorLabMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+    const accentMat = new THREE.MeshLambertMaterial({ color: 0x0284c7 });
+    const helipadYellow = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+
+    // 1. Central Grand Atrium (28m x 28m x 14m tall)
+    const atriumW = 28;
+    const atriumD = 28;
+    const atriumH = 14;
+
+    // Grand Foundation
+    const foundation = new THREE.Mesh(new THREE.BoxGeometry(64, 0.6, 54), floorLabMat);
+    foundation.position.y = 0.3;
+    centerGroup.add(foundation);
+
+    this.colliders.push({
+      box: new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(x, y + 0.3, z),
+        new THREE.Vector3(64, 0.6, 54)
+      ),
+      type: 'building',
+    });
+
+    // 4 Grand Colonnade Pillars at front entrance
+    const pillarGeo = new THREE.CylinderGeometry(1.4, 1.4, atriumH, 12);
+    for (let p = 0; p < 4; p++) {
+      const px = -9 + p * 6;
+      const pz = atriumD / 2;
+      const pillar = new THREE.Mesh(pillarGeo, whitePanelMat);
+      pillar.position.set(px, atriumH / 2, pz);
+      centerGroup.add(pillar);
+
+      this.colliders.push({
+        box: new THREE.Box3().setFromCenterAndSize(
+          new THREE.Vector3(x + px, y + atriumH / 2, z + pz),
+          new THREE.Vector3(2.8, atriumH, 2.8)
+        ),
+        type: 'wall',
+      });
+    }
+
+    // Atrium Rear Wall
+    this.addWall(centerGroup, 0, atriumH / 2, -atriumD / 2, atriumW, atriumH, 0.5, whitePanelMat, x, y, z);
+
+    // Giant Futuristic Glass Geodesic Dome atop Central Atrium (13m diameter, glowing cyan)
+    const domeGeo = new THREE.SphereGeometry(13, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    const glassDome = new THREE.Mesh(domeGeo, glassCyanMat);
+    glassDome.position.set(0, atriumH, 0);
+    centerGroup.add(glassDome);
+
+    // 2. West Research Wing (18m x 42m x 12m, 3 floors)
+    const wingW = 18;
+    const wingD = 42;
+    const wingH = 12;
+    const westX = -atriumW / 2 - wingW / 2;
+
+    const westWing = new THREE.Mesh(new THREE.BoxGeometry(wingW, wingH, wingD), whitePanelMat);
+    westWing.position.set(westX, wingH / 2, 0);
+    centerGroup.add(westWing);
+
+    // Large glass bands on West Wing
+    const westGlass = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, wingD - 6), glassCyanMat);
+    westGlass.position.set(westX - wingW / 2 - 0.1, wingH * 0.6, 0);
+    centerGroup.add(westGlass);
+
+    this.colliders.push({
+      box: new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(x + westX, y + wingH / 2, z),
+        new THREE.Vector3(wingW, wingH, wingD)
+      ),
+      type: 'building',
+    });
+
+    // 3. East Technology Wing (18m x 42m x 12m, 3 floors)
+    const eastX = atriumW / 2 + wingW / 2;
+
+    const eastWing = new THREE.Mesh(new THREE.BoxGeometry(wingW, wingH, wingD), whitePanelMat);
+    eastWing.position.set(eastX, wingH / 2, 0);
+    centerGroup.add(eastWing);
+
+    const eastGlass = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, wingD - 6), glassCyanMat);
+    eastGlass.position.set(eastX + wingW / 2 + 0.1, wingH * 0.6, 0);
+    centerGroup.add(eastGlass);
+
+    this.colliders.push({
+      box: new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(x + eastX, y + wingH / 2, z),
+        new THREE.Vector3(wingW, wingH, wingD)
+      ),
+      type: 'building',
+    });
+
+    // 4. Elevated Skybridge connecting wings across the atrium
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(atriumW, 1.2, 7.0), darkFrameMat);
+    bridge.position.set(0, 7.0, 0);
+    centerGroup.add(bridge);
+
+    const bridgeRails = new THREE.Mesh(new THREE.BoxGeometry(atriumW, 1.2, 0.3), glassCyanMat);
+    bridgeRails.position.set(0, 8.2, 3.4);
+    centerGroup.add(bridgeRails);
+    const bridgeRailsBack = new THREE.Mesh(new THREE.BoxGeometry(atriumW, 1.2, 0.3), glassCyanMat);
+    bridgeRailsBack.position.set(0, 8.2, -3.4);
+    centerGroup.add(bridgeRailsBack);
+
+    this.colliders.push({
+      box: new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(x, y + 7.0, z),
+        new THREE.Vector3(atriumW, 1.2, 7.0)
+      ),
+      type: 'building',
+    });
+
+    // 5. Rooftop Helipad on East Wing
+    const heliPad = new THREE.Mesh(new THREE.BoxGeometry(14, 0.2, 14), accentMat);
+    heliPad.position.set(eastX, wingH + 0.1, 0);
+    centerGroup.add(heliPad);
+
+    const heliRing = new THREE.Mesh(new THREE.RingGeometry(4.5, 5.2, 24), helipadYellow);
+    heliRing.rotateX(-Math.PI / 2);
+    heliRing.position.set(eastX, wingH + 0.22, 0);
+    centerGroup.add(heliRing);
+
+    // 6. Science Satellite Communications Array on West Wing
+    const dishMast = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 6, 8), darkFrameMat);
+    dishMast.position.set(westX, wingH + 3, 0);
+    centerGroup.add(dishMast);
+
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(3.5, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), whitePanelMat);
+    dish.rotation.x = -Math.PI / 3;
+    dish.position.set(westX, wingH + 6.5, 0);
+    centerGroup.add(dish);
+
+    this.scene.add(centerGroup);
+
+    // Register full 3D building bounds for shelter and tactical cover
+    const centerBounds = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(x, y + 10, z),
+      new THREE.Vector3(68, 20, 56)
+    );
+    this.colliders.push({
+      box: centerBounds,
+      type: 'building',
+    });
+    this.buildingBounds.push(centerBounds);
+
+    // Register extensive indoor loot spawn points
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 1.0, z));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 5, y + 1.0, z + 6));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 5, y + 1.0, z + 6));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 8, y + 1.0, z - 6));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 8, y + 1.0, z - 6));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + eastX, y + 1.0, z));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + westX, y + 1.0, z));
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 7.8, z)); // On Skybridge!
+    this.houseSpawnPoints.push(new THREE.Vector3(x + eastX, y + wingH + 0.6, z)); // On Helipad!
+    this.houseSpawnPoints.push(new THREE.Vector3(x + westX, y + wingH + 0.6, z)); // On Observation Deck!
   }
 
   private addWall(
@@ -597,86 +830,171 @@ export class WorldBuilder {
   }
 
   /**
-   * Military Barracks (Long low-profile corrugated hall)
+   * Nusa Science Laboratory Hangar (Grand arched multi-bay research facility)
    */
   private buildBarracks(x: number, z: number, wallMat: THREE.Material, roofMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
-    const length = 28;
-    const width = 10;
-    const height = 4.2;
+    const length = 46;
+    const width = 22;
+    const height = 8.0;
 
-    const barracks = new THREE.Group();
-    barracks.position.set(x, y, z);
+    const hangar = new THREE.Group();
+    hangar.position.set(x, y, z);
 
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const darkFrameMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+    const floorMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+
+    // 1. Reinforced Concrete Hangar Foundation
+    const floorGeo = new THREE.BoxGeometry(width + 4, 0.4, length + 4);
+    const foundation = new THREE.Mesh(floorGeo, floorMat);
+    foundation.position.y = 0.2;
+    hangar.add(foundation);
+
+    // 2. Main High-Vaulted Vault Body
     const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, length), wallMat);
     body.position.y = height / 2;
-    barracks.add(body);
+    hangar.add(body);
 
-    const roof = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.55, width * 0.55, length, 8, 1, false, 0, Math.PI), roofMat);
+    // 3. Curved Science Vault Roof with central skylight
+    const roof = new THREE.Mesh(
+      new THREE.CylinderGeometry(width * 0.52, width * 0.52, length, 12, 1, false, 0, Math.PI),
+      roofMat
+    );
     roof.rotation.x = Math.PI / 2;
     roof.position.y = height;
-    barracks.add(roof);
+    hangar.add(roof);
 
-    this.scene.add(barracks);
+    // Cyan Glass Skylight strip along spine of roof
+    const skylight = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.4, length - 4), glassCyanMat);
+    skylight.position.set(0, height + width * 0.52, 0);
+    hangar.add(skylight);
 
-    const barracksBox = new THREE.Box3().setFromCenterAndSize(
+    // 4. Grand 7m Wide Double Blast Doors on Front and Back
+    const doorFront = new THREE.Mesh(new THREE.BoxGeometry(7.0, 5.5, 0.6), darkFrameMat);
+    doorFront.position.set(0, 2.75, length / 2 + 0.1);
+    hangar.add(doorFront);
+
+    const doorBack = new THREE.Mesh(new THREE.BoxGeometry(7.0, 5.5, 0.6), darkFrameMat);
+    doorBack.position.set(0, 2.75, -length / 2 - 0.1);
+    hangar.add(doorBack);
+
+    // 5. Left and Right Science Lab Annex Wings (10m x 4.5m x 18m)
+    const annexL = new THREE.Mesh(new THREE.BoxGeometry(7.0, 4.5, 20), wallMat);
+    annexL.position.set(-width / 2 - 3.5, 2.25, 0);
+    hangar.add(annexL);
+
+    const annexR = new THREE.Mesh(new THREE.BoxGeometry(7.0, 4.5, 20), wallMat);
+    annexR.position.set(width / 2 + 3.5, 2.25, 0);
+    hangar.add(annexR);
+
+    // Annex Glass Windows
+    const winL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.0, 14), glassCyanMat);
+    winL.position.set(-width / 2 - 7.1, 2.4, 0);
+    hangar.add(winL);
+
+    const winR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.0, 14), glassCyanMat);
+    winR.position.set(width / 2 + 7.1, 2.4, 0);
+    hangar.add(winR);
+
+    this.scene.add(hangar);
+
+    // Colliders for main hangar and side wings
+    const hangarBox = new THREE.Box3().setFromCenterAndSize(
       new THREE.Vector3(x, y + height / 2, z),
-      new THREE.Vector3(width, height + 2, length)
+      new THREE.Vector3(width + 14, height + 4, length + 2)
     );
     this.colliders.push({
-      box: barracksBox,
+      box: hangarBox,
       type: 'building',
     });
-    this.buildingBounds.push(barracksBox);
+    this.buildingBounds.push(hangarBox);
 
-    // Register indoor loot spawn points for Barracks
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 2, y + 0.5, z - 8));
-    this.houseSpawnPoints.push(new THREE.Vector3(x + 2, y + 0.5, z + 8));
+    // Register indoor loot spawn points for Science Hangar
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 5, y + 0.5, z - 12));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 5, y + 0.5, z - 12));
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 5, y + 0.5, z + 12));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 5, y + 0.5, z + 12));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - width / 2 - 3, y + 0.5, z));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + width / 2 + 3, y + 0.5, z));
   }
 
   /**
-   * Shipping Container
+   * Shipping Container (Massive Science Logistics Crate)
    */
   private buildShippingContainer(x: number, z: number, mat: THREE.Material, yOffset = 0): void {
     const y = getTerrainHeight(x, z) + yOffset;
-    const container = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 10), mat);
-    container.position.set(x, y + 1.5, z);
-    this.scene.add(container);
+    const length = 14;
+    const width = 5.2;
+    const height = 3.8;
+
+    const containerGroup = new THREE.Group();
+    containerGroup.position.set(x, y + height / 2, z);
+
+    const container = new THREE.Mesh(new THREE.BoxGeometry(width, height, length), mat);
+    containerGroup.add(container);
+
+    // Corner reinforcement columns
+    const frameMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+    const cornerGeo = new THREE.BoxGeometry(0.5, height + 0.1, 0.5);
+    for (const cx of [-width / 2, width / 2]) {
+      for (const cz of [-length / 2, length / 2]) {
+        const corner = new THREE.Mesh(cornerGeo, frameMat);
+        corner.position.set(cx, 0, cz);
+        containerGroup.add(corner);
+      }
+    }
+
+    this.scene.add(containerGroup);
 
     this.colliders.push({
-      box: new THREE.Box3().setFromCenterAndSize(container.position, new THREE.Vector3(4, 3, 10)),
+      box: new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x, y + height / 2, z), new THREE.Vector3(width, height, length)),
       type: 'crate',
     });
   }
 
   /**
-   * Pochinki Church
+   * Grand Planetary Observatory & Assembly (Monumental Science Cathedral)
    */
   private buildChurch(x: number, z: number, wallMat: THREE.Material, roofMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
     const church = new THREE.Group();
     church.position.set(x, y, z);
 
-    // Nave
-    const nave = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 24), wallMat);
-    nave.position.y = 3.5;
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const trimMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+
+    // Grand Nave (32m width x 14m height x 48m length)
+    const nave = new THREE.Mesh(new THREE.BoxGeometry(32, 14, 48), wallMat);
+    nave.position.y = 7;
     church.add(nave);
 
-    // Tower Spire
-    const tower = new THREE.Mesh(new THREE.BoxGeometry(7, 22, 7), wallMat);
-    tower.position.set(0, 11, 10);
-    church.add(tower);
+    // Cyan Glass ribbon down nave roof
+    const naveGlass = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, 42), glassCyanMat);
+    naveGlass.position.set(0, 14.2, 0);
+    church.add(naveGlass);
 
-    const steeple = new THREE.Mesh(new THREE.ConeGeometry(5, 8, 4), roofMat);
-    steeple.rotateY(Math.PI / 4);
-    steeple.position.set(0, 26, 10);
-    church.add(steeple);
+    // Monumental Celestial Dome atop nave
+    const domeGeo = new THREE.SphereGeometry(11, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    const dome = new THREE.Mesh(domeGeo, glassCyanMat);
+    dome.position.set(0, 14, -8);
+    church.add(dome);
+
+    // High-Tech Science Transmission Spire (38m height)
+    const spireMast = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.8, 24, 8), trimMat);
+    spireMast.position.set(0, 26, 18);
+    church.add(spireMast);
+
+    const spireTip = new THREE.Mesh(new THREE.ConeGeometry(1.2, 12, 8), roofMat);
+    spireTip.position.set(0, 44, 18);
+    church.add(spireTip);
 
     this.scene.add(church);
 
     const churchBox = new THREE.Box3().setFromCenterAndSize(
-      new THREE.Vector3(x, y + 5, z),
-      new THREE.Vector3(16, 10, 24)
+      new THREE.Vector3(x, y + 10, z),
+      new THREE.Vector3(34, 20, 52)
     );
     this.colliders.push({
       box: churchBox,
@@ -684,63 +1002,112 @@ export class WorldBuilder {
     });
     this.buildingBounds.push(churchBox);
 
-    // Register indoor loot spawn points for Church
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z - 4));
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z + 4));
+    // Register indoor loot spawn points
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z - 12));
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z + 12));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 8, y + 0.5, z));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 8, y + 0.5, z));
   }
 
   /**
-   * Pecado Boxing Arena (Stadium)
+   * Colossal Nusa Robotics Testing Stadium (Monumental Arena)
+   * 54m width x 64m length x 14m height with 4 corner towers, elevated catwalks, and grandstands
    */
   private buildPecadoArena(x: number, z: number, wallMat: THREE.Material, seatMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
     const arena = new THREE.Group();
     arena.position.set(x, y, z);
 
+    const arenaW = 54;
+    const arenaL = 64;
+    const arenaH = 14;
     const wallThick = 2.5;
-    const arenaW = 28;
-    const arenaL = 34;
-    const arenaH = 8.5;
 
-    // West Wall
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const frameMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+
+    // West Blast Wall
     const wWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, arenaH, arenaL), wallMat);
     wWall.position.set(-arenaW / 2, arenaH / 2, 0);
     arena.add(wWall);
 
-    // East Wall
+    // East Blast Wall
     const eWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, arenaH, arenaL), wallMat);
     eWall.position.set(arenaW / 2, arenaH / 2, 0);
     arena.add(eWall);
 
-    // North Wall
-    const nWall = new THREE.Mesh(new THREE.BoxGeometry(arenaW, arenaH, wallThick), wallMat);
-    nWall.position.set(0, arenaH / 2, -arenaL / 2);
-    arena.add(nWall);
+    // North Wall with 10m wide grand entry archway
+    const nWallL = new THREE.Mesh(new THREE.BoxGeometry((arenaW - 12) / 2, arenaH, wallThick), wallMat);
+    nWallL.position.set(-(arenaW + 12) / 4, arenaH / 2, -arenaL / 2);
+    arena.add(nWallL);
+    const nWallR = new THREE.Mesh(new THREE.BoxGeometry((arenaW - 12) / 2, arenaH, wallThick), wallMat);
+    nWallR.position.set((arenaW + 12) / 4, arenaH / 2, -arenaL / 2);
+    arena.add(nWallR);
+    const nArch = new THREE.Mesh(new THREE.BoxGeometry(12, 3.5, wallThick), frameMat);
+    nArch.position.set(0, arenaH - 1.75, -arenaL / 2);
+    arena.add(nArch);
 
-    // South Wall
-    const sWall = new THREE.Mesh(new THREE.BoxGeometry(arenaW, arenaH, wallThick), wallMat);
-    sWall.position.set(0, arenaH / 2, arenaL / 2);
-    arena.add(sWall);
+    // South Wall with 10m wide grand entry archway
+    const sWallL = new THREE.Mesh(new THREE.BoxGeometry((arenaW - 12) / 2, arenaH, wallThick), wallMat);
+    sWallL.position.set(-(arenaW + 12) / 4, arenaH / 2, arenaL / 2);
+    arena.add(sWallL);
+    const sWallR = new THREE.Mesh(new THREE.BoxGeometry((arenaW - 12) / 2, arenaH, wallThick), wallMat);
+    sWallR.position.set((arenaW + 12) / 4, arenaH / 2, arenaL / 2);
+    arena.add(sWallR);
+    const sArch = new THREE.Mesh(new THREE.BoxGeometry(12, 3.5, wallThick), frameMat);
+    sArch.position.set(0, arenaH - 1.75, arenaL / 2);
+    arena.add(sArch);
 
-    // Central Boxing Ring
-    const ring = new THREE.Mesh(new THREE.BoxGeometry(6, 1.2, 6), seatMat);
-    ring.position.set(0, 0.6, 0);
+    // 4 Grand Corner Observation Towers (8m x 8m x 16m)
+    const towerGeo = new THREE.BoxGeometry(8, 16, 8);
+    for (const cx of [-arenaW / 2, arenaW / 2]) {
+      for (const cz of [-arenaL / 2, arenaL / 2]) {
+        const tower = new THREE.Mesh(towerGeo, frameMat);
+        tower.position.set(cx, 8, cz);
+        arena.add(tower);
+
+        const towerGlass = new THREE.Mesh(new THREE.BoxGeometry(8.2, 2.5, 8.2), glassCyanMat);
+        towerGlass.position.set(cx, 13, cz);
+        arena.add(towerGlass);
+
+        this.colliders.push({
+          box: new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x + cx, y + 8, z + cz), new THREE.Vector3(8, 16, 8)),
+          type: 'wall',
+        });
+      }
+    }
+
+    // Central Elevated Robotics Combat Stage (16m x 16m x 1.6m)
+    const ring = new THREE.Mesh(new THREE.BoxGeometry(16, 1.6, 16), seatMat);
+    ring.position.set(0, 0.8, 0);
     arena.add(ring);
 
-    // Tiered Seats
-    const seatW = new THREE.Mesh(new THREE.BoxGeometry(5, 3.5, arenaL - 8), seatMat);
-    seatW.position.set(-arenaW / 2 + 3.5, 1.75, 0);
+    // Tiered Bleachers / Spectator Seating on West and East
+    const seatW = new THREE.Mesh(new THREE.BoxGeometry(10, 5.0, arenaL - 20), seatMat);
+    seatW.position.set(-arenaW / 2 + 7, 2.5, 0);
     arena.add(seatW);
 
-    const seatE = new THREE.Mesh(new THREE.BoxGeometry(5, 3.5, arenaL - 8), seatMat);
-    seatE.position.set(arenaW / 2 - 3.5, 1.75, 0);
+    const seatE = new THREE.Mesh(new THREE.BoxGeometry(10, 5.0, arenaL - 20), seatMat);
+    seatE.position.set(arenaW / 2 - 7, 2.5, 0);
     arena.add(seatE);
+
+    // Elevated Overhead Catwalk Skybridge across Stadium at Y = 8.5
+    const skybridge = new THREE.Mesh(new THREE.BoxGeometry(arenaW - 4, 1.0, 6.0), frameMat);
+    skybridge.position.set(0, 8.5, 0);
+    arena.add(skybridge);
+
+    const skybridgeRails = new THREE.Mesh(new THREE.BoxGeometry(arenaW - 4, 1.2, 0.3), glassCyanMat);
+    skybridgeRails.position.set(0, 9.6, 3.0);
+    arena.add(skybridgeRails);
+    const skybridgeRailsBack = new THREE.Mesh(new THREE.BoxGeometry(arenaW - 4, 1.2, 0.3), glassCyanMat);
+    skybridgeRailsBack.position.set(0, 9.6, -3.0);
+    arena.add(skybridgeRailsBack);
 
     this.scene.add(arena);
 
     const arenaBox = new THREE.Box3().setFromCenterAndSize(
       new THREE.Vector3(x, y + arenaH / 2, z),
-      new THREE.Vector3(arenaW, arenaH, arenaL)
+      new THREE.Vector3(arenaW + 4, arenaH + 4, arenaL + 4)
     );
     this.colliders.push({
       box: arenaBox,
@@ -748,32 +1115,92 @@ export class WorldBuilder {
     });
     this.buildingBounds.push(arenaBox);
 
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 1.4, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 9, y + 4.0, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x + 9, y + 4.0, z));
+    // Loot spawn points across arena floor, bleachers, and elevated catwalk
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 1.8, z)); // Center stage
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 14, y + 5.5, z)); // West bleacher
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 14, y + 5.5, z)); // East bleacher
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 9.2, z)); // On Catwalk Skybridge!
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 8, y + 0.5, z - 16));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 8, y + 0.5, z - 16));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 8, y + 0.5, z + 16));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 8, y + 0.5, z + 16));
   }
 
   /**
-   * Pecado Casino Block
+   * Grand Nusa Cybernetics Research Tower
+   * 34m width x 34m depth x 26m height (4 full stories with glass wrap and rooftop deck)
    */
   private buildPecadoCasino(x: number, z: number, wallMat: THREE.Material, roofMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
     const casino = new THREE.Group();
     casino.position.set(x, y, z);
 
-    const base = new THREE.Mesh(new THREE.BoxGeometry(18, 12, 18), wallMat);
-    base.position.y = 6;
+    const width = 34;
+    const depth = 34;
+    const height = 26;
+
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const darkFrameMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+    const whiteMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
+
+    // Main 4-Story Tower Structure
+    const base = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), whiteMat);
+    base.position.y = height / 2;
     casino.add(base);
 
-    const neonSign = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 2), roofMat);
-    neonSign.position.set(0, 10, 10);
-    casino.add(neonSign);
+    // Cyan Glass Curtain Bands on all 4 floors
+    for (let f = 1; f <= 4; f++) {
+      const bandY = f * 6.0 - 2.0;
+      const glassBandFront = new THREE.Mesh(new THREE.BoxGeometry(width - 4, 2.2, 0.4), glassCyanMat);
+      glassBandFront.position.set(0, bandY, depth / 2 + 0.1);
+      casino.add(glassBandFront);
+
+      const glassBandBack = new THREE.Mesh(new THREE.BoxGeometry(width - 4, 2.2, 0.4), glassCyanMat);
+      glassBandBack.position.set(0, bandY, -depth / 2 - 0.1);
+      casino.add(glassBandBack);
+
+      const glassBandLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, depth - 4), glassCyanMat);
+      glassBandLeft.position.set(-width / 2 - 0.1, bandY, 0);
+      casino.add(glassBandLeft);
+
+      const glassBandRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, depth - 4), glassCyanMat);
+      glassBandRight.position.set(width / 2 + 0.1, bandY, 0);
+      casino.add(glassBandRight);
+    }
+
+    // Grand Entrance Colonnade (6m tall pillars)
+    const pillarGeo = new THREE.CylinderGeometry(1.2, 1.2, 6.0, 8);
+    for (let p = -2; p <= 2; p++) {
+      const col = new THREE.Mesh(pillarGeo, darkFrameMat);
+      col.position.set(p * 6, 3.0, depth / 2 + 2.5);
+      casino.add(col);
+    }
+
+    // Portico Roof above entrance
+    const portico = new THREE.Mesh(new THREE.BoxGeometry(30, 0.6, 6.0), darkFrameMat);
+    portico.position.set(0, 6.0, depth / 2 + 2.5);
+    casino.add(portico);
+
+    // Rooftop Communications & Solar Array
+    const roofDishMast = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 8, 8), darkFrameMat);
+    roofDishMast.position.set(8, height + 4, 8);
+    casino.add(roofDishMast);
+
+    const roofDish = new THREE.Mesh(new THREE.SphereGeometry(4.0, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), glassCyanMat);
+    roofDish.rotation.x = -Math.PI / 4;
+    roofDish.position.set(8, height + 8, 8);
+    casino.add(roofDish);
+
+    // Rooftop Safety Parapet
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(width, 1.2, depth), darkFrameMat);
+    parapet.position.y = height + 0.6;
+    casino.add(parapet);
 
     this.scene.add(casino);
 
     const casinoBox = new THREE.Box3().setFromCenterAndSize(
-      new THREE.Vector3(x, y + 6, z),
-      new THREE.Vector3(18, 12, 18)
+      new THREE.Vector3(x, y + height / 2, z),
+      new THREE.Vector3(width + 6, height + 6, depth + 6)
     );
     this.colliders.push({
       box: casinoBox,
@@ -781,52 +1208,88 @@ export class WorldBuilder {
     });
     this.buildingBounds.push(casinoBox);
 
+    // Register indoor loot spawn points for Cybernetics Tower
     this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 4, y + 0.5, z + 4));
-    this.houseSpawnPoints.push(new THREE.Vector3(x + 4, y + 0.5, z - 4));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 8, y + 0.5, z - 8));
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 8, y + 0.5, z + 8));
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 6.5, z)); // Floor 2
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 12.5, z)); // Floor 3
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 18.5, z)); // Floor 4
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + height + 0.8, z)); // Rooftop deck!
   }
 
   /**
-   * Hacienda del Patron Villa
+   * Grand Nusa Bio-Tech Headquarters (Massive Resort Science Complex)
+   * Sprawling 58m x 58m x 13m complex with 3-story glass labs, courtyard atrium, colonnade
    */
   private buildHaciendaVilla(x: number, z: number, wallMat: THREE.Material, roofMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
     const villa = new THREE.Group();
     villa.position.set(x, y, z);
 
-    const wingW = 8;
-    const wingH = 7.5;
-    const courtyardSize = 14;
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const darkFrameMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+    const whiteMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
 
-    const wWing = new THREE.Mesh(new THREE.BoxGeometry(wingW, wingH, courtyardSize + wingW * 2), wallMat);
+    const wingW = 14;
+    const wingH = 13.0;
+    const courtyardSize = 30;
+    const totalSize = courtyardSize + wingW * 2; // 58m!
+
+    // West 3-Story Laboratory Wing
+    const wWing = new THREE.Mesh(new THREE.BoxGeometry(wingW, wingH, totalSize), whiteMat);
     wWing.position.set(-courtyardSize / 2 - wingW / 2, wingH / 2, 0);
     villa.add(wWing);
 
-    const eWing = new THREE.Mesh(new THREE.BoxGeometry(wingW, wingH, courtyardSize + wingW * 2), wallMat);
+    // West Wing Glass Ribbon
+    const wGlass = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.0, totalSize - 8), glassCyanMat);
+    wGlass.position.set(-courtyardSize / 2 - wingW - 0.1, wingH * 0.6, 0);
+    villa.add(wGlass);
+
+    // East 3-Story Laboratory Wing
+    const eWing = new THREE.Mesh(new THREE.BoxGeometry(wingW, wingH, totalSize), whiteMat);
     eWing.position.set(courtyardSize / 2 + wingW / 2, wingH / 2, 0);
     villa.add(eWing);
 
-    const nWing = new THREE.Mesh(new THREE.BoxGeometry(courtyardSize, wingH, wingW), wallMat);
+    // East Wing Glass Ribbon
+    const eGlass = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.0, totalSize - 8), glassCyanMat);
+    eGlass.position.set(courtyardSize / 2 + wingW + 0.1, wingH * 0.6, 0);
+    villa.add(eGlass);
+
+    // North Connecting Atrium Wing
+    const nWing = new THREE.Mesh(new THREE.BoxGeometry(courtyardSize, wingH, wingW), whiteMat);
     nWing.position.set(0, wingH / 2, -courtyardSize / 2 - wingW / 2);
     villa.add(nWing);
 
-    const sWing = new THREE.Mesh(new THREE.BoxGeometry(courtyardSize, wingH, wingW), wallMat);
-    sWing.position.set(0, wingH / 2, courtyardSize / 2 + wingW / 2);
+    // South Entrance Portico Wing (Lower 8m profile with grand entrance colonnade)
+    const sWing = new THREE.Mesh(new THREE.BoxGeometry(courtyardSize, 8.0, wingW), darkFrameMat);
+    sWing.position.set(0, 4.0, courtyardSize / 2 + wingW / 2);
     villa.add(sWing);
 
-    const wRoof = new THREE.Mesh(new THREE.ConeGeometry(wingW * 0.8, 3, 4), roofMat);
-    wRoof.position.set(-courtyardSize / 2 - wingW / 2, wingH + 1.5, 0);
-    villa.add(wRoof);
+    // Entrance Colonnade Pillars
+    const colGeo = new THREE.CylinderGeometry(1.2, 1.2, 8.0, 8);
+    for (let i = -2; i <= 2; i++) {
+      const col = new THREE.Mesh(colGeo, whiteMat);
+      col.position.set(i * 6, 4.0, courtyardSize / 2 + wingW + 2.0);
+      villa.add(col);
+    }
 
-    const eRoof = new THREE.Mesh(new THREE.ConeGeometry(wingW * 0.8, 3, 4), roofMat);
-    eRoof.position.set(courtyardSize / 2 + wingW / 2, wingH + 1.5, 0);
-    villa.add(eRoof);
+    // Central Courtyard Glass Skylight Atrium Dome
+    const domeGeo = new THREE.SphereGeometry(9, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    const courtyardDome = new THREE.Mesh(domeGeo, glassCyanMat);
+    courtyardDome.position.set(0, 6.0, 0);
+    villa.add(courtyardDome);
+
+    // Bio-Tech Centerpiece Monument inside courtyard
+    const monument = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.8, 3.5, 8), darkFrameMat);
+    monument.position.set(0, 1.75, 0);
+    villa.add(monument);
 
     this.scene.add(villa);
 
     const villaBox = new THREE.Box3().setFromCenterAndSize(
       new THREE.Vector3(x, y + wingH / 2, z),
-      new THREE.Vector3(courtyardSize + wingW * 2, wingH, courtyardSize + wingW * 2)
+      new THREE.Vector3(totalSize + 4, wingH + 4, totalSize + 4)
     );
     this.colliders.push({
       box: villaBox,
@@ -834,54 +1297,98 @@ export class WorldBuilder {
     });
     this.buildingBounds.push(villaBox);
 
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 9, y + 0.5, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x + 9, y + 0.5, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z - 9));
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z + 9));
+    // Indoor loot spawn points
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z)); // Courtyard center
+    this.houseSpawnPoints.push(new THREE.Vector3(x - courtyardSize / 2 - wingW / 2, y + 0.5, z)); // West lab
+    this.houseSpawnPoints.push(new THREE.Vector3(x + courtyardSize / 2 + wingW / 2, y + 0.5, z)); // East lab
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z - courtyardSize / 2 - wingW / 2)); // North wing
+    this.houseSpawnPoints.push(new THREE.Vector3(x - courtyardSize / 2 - wingW / 2, y + 5.5, z)); // West lab 2F
+    this.houseSpawnPoints.push(new THREE.Vector3(x + courtyardSize / 2 + wingW / 2, y + 5.5, z)); // East lab 2F
+    this.houseSpawnPoints.push(new THREE.Vector3(x - courtyardSize / 2 - wingW / 2, y + wingH + 0.5, z)); // Rooftop West
+    this.houseSpawnPoints.push(new THREE.Vector3(x + courtyardSize / 2 + wingW / 2, y + wingH + 0.5, z)); // Rooftop East
   }
 
   /**
-   * Los Leones construction skeleton
+   * Nusa Mega-Structure Skyscraper Skeletons (Unfinished 5-Story Science Facility)
+   * 32m width x 38m length x 22m height with 5 floor slabs, heavy industrial columns, catwalks
    */
   private buildLosLeonesSkeleton(x: number, z: number, brickMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
     const skeleton = new THREE.Group();
     skeleton.position.set(x, y, z);
 
-    const width = 16;
-    const length = 20;
-    const floorH = 3.6;
+    const width = 32;
+    const length = 38;
+    const floorH = 4.4;
+    const floors = 5;
+    const totalH = floorH * floors; // 22m!
 
-    for (let floor = 0; floor < 3; floor++) {
-      const slab = new THREE.Mesh(new THREE.BoxGeometry(width, 0.3, length), brickMat);
+    const darkSteelMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+    const floorSlabMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+
+    // 5 Reinforced Concrete Floor Slabs
+    for (let floor = 0; floor < floors; floor++) {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(width, 0.4, length), floorSlabMat);
       slab.position.y = floor * floorH;
       skeleton.add(slab);
+
+      // Floor colliders
+      this.colliders.push({
+        box: new THREE.Box3().setFromCenterAndSize(
+          new THREE.Vector3(x, y + floor * floorH, z),
+          new THREE.Vector3(width, 0.4, length)
+        ),
+        type: 'building',
+      });
+
+      // Parapet security rails around edges of each floor
+      const railGeo = new THREE.BoxGeometry(width, 1.1, 0.3);
+      const railF = new THREE.Mesh(railGeo, darkSteelMat);
+      railF.position.set(0, floor * floorH + 0.55, length / 2);
+      skeleton.add(railF);
+
+      const railB = new THREE.Mesh(railGeo, darkSteelMat);
+      railB.position.set(0, floor * floorH + 0.55, -length / 2);
+      skeleton.add(railB);
     }
 
-    const colH = floorH * 2.8;
-    const colGeo = new THREE.BoxGeometry(1.2, colH, 1.2);
+    // 6 Heavy Reinforced Structural Columns (1.8m x 1.8m x 22m)
+    const colGeo = new THREE.BoxGeometry(1.8, totalH, 1.8);
+    const colPositions = [
+      { cx: -width / 2 + 1.2, cz: -length / 2 + 1.2 },
+      { cx: width / 2 - 1.2, cz: -length / 2 + 1.2 },
+      { cx: -width / 2 + 1.2, cz: 0 },
+      { cx: width / 2 - 1.2, cz: 0 },
+      { cx: -width / 2 + 1.2, cz: length / 2 - 1.2 },
+      { cx: width / 2 - 1.2, cz: length / 2 - 1.2 },
+    ];
 
-    const c1 = new THREE.Mesh(colGeo, brickMat);
-    c1.position.set(-width / 2 + 0.6, colH / 2, -length / 2 + 0.6);
-    skeleton.add(c1);
+    for (const cp of colPositions) {
+      const col = new THREE.Mesh(colGeo, darkSteelMat);
+      col.position.set(cp.cx, totalH / 2, cp.cz);
+      skeleton.add(col);
 
-    const c2 = new THREE.Mesh(colGeo, brickMat);
-    c2.position.set(width / 2 - 0.6, colH / 2, -length / 2 + 0.6);
-    skeleton.add(c2);
+      this.colliders.push({
+        box: new THREE.Box3().setFromCenterAndSize(
+          new THREE.Vector3(x + cp.cx, y + totalH / 2, z + cp.cz),
+          new THREE.Vector3(1.8, totalH, 1.8)
+        ),
+        type: 'wall',
+      });
+    }
 
-    const c3 = new THREE.Mesh(colGeo, brickMat);
-    c3.position.set(-width / 2 + 0.6, colH / 2, length / 2 - 0.6);
-    skeleton.add(c3);
-
-    const c4 = new THREE.Mesh(colGeo, brickMat);
-    c4.position.set(width / 2 - 0.6, colH / 2, length / 2 - 0.6);
-    skeleton.add(c4);
+    // Diagonal Cross-Bracing Steel Girders on facades
+    const braceGeo = new THREE.BoxGeometry(0.4, 0.4, Math.hypot(width, floorH * 2));
+    const brace1 = new THREE.Mesh(braceGeo, darkSteelMat);
+    brace1.position.set(0, floorH, length / 2);
+    brace1.rotation.z = Math.atan2(floorH * 2, width);
+    skeleton.add(brace1);
 
     this.scene.add(skeleton);
 
     const skeletonBox = new THREE.Box3().setFromCenterAndSize(
-      new THREE.Vector3(x, y + colH / 2, z),
-      new THREE.Vector3(width, colH, length)
+      new THREE.Vector3(x, y + totalH / 2, z),
+      new THREE.Vector3(width + 2, totalH + 2, length + 2)
     );
     this.colliders.push({
       box: skeletonBox,
@@ -889,64 +1396,100 @@ export class WorldBuilder {
     });
     this.buildingBounds.push(skeletonBox);
 
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 0.5, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + floorH + 0.5, z));
-    this.houseSpawnPoints.push(new THREE.Vector3(x, y + floorH * 2 + 0.5, z));
+    // Multi-tier loot spawns on floors 1, 2, 3, 4, 5
+    for (let f = 0; f < floors; f++) {
+      this.houseSpawnPoints.push(new THREE.Vector3(x - 6, y + f * floorH + 0.5, z - 6));
+      this.houseSpawnPoints.push(new THREE.Vector3(x + 6, y + f * floorH + 0.5, z + 6));
+    }
   }
 
   /**
-   * Radar Tower for Military Base
+   * Monumental Science Radar Tower for Military Base (42m tall)
    */
   private buildRadarTower(x: number, z: number): void {
     const y = getTerrainHeight(x, z);
     const tower = new THREE.Group();
     tower.position.set(x, y, z);
 
-    const metalMat = new THREE.MeshLambertMaterial({ color: 0x55585b });
-    const domeMat = new THREE.MeshLambertMaterial({ color: 0xdedede });
+    const metalMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+    const domeMat = new THREE.MeshLambertMaterial({ color: 0xf1f5f9 });
+    const cyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff });
 
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(2, 4, 32, 6), metalMat);
-    mast.position.y = 16;
+    // Sturdy Hexagonal Mast Tower (36m)
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 5.5, 36, 6), metalMat);
+    mast.position.y = 18;
     tower.add(mast);
 
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(7, 8, 8), domeMat);
-    dome.position.y = 34;
+    // Mid-level observation ring at 22m
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.5, 1.2, 12), metalMat);
+    ring.position.y = 22;
+    tower.add(ring);
+
+    // Giant 10m Geodesic Radome atop the tower
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(9, 12, 10), domeMat);
+    dome.position.y = 41;
     tower.add(dome);
+
+    // Rotating Radar Dish Ring
+    const dishRing = new THREE.Mesh(new THREE.TorusGeometry(10.5, 0.4, 8, 24), cyanMat);
+    dishRing.rotation.x = Math.PI / 2;
+    dishRing.position.y = 41;
+    tower.add(dishRing);
 
     this.scene.add(tower);
 
     this.colliders.push({
       box: new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(x, y + 16, z),
-        new THREE.Vector3(6, 36, 6)
+        new THREE.Vector3(x, y + 22, z),
+        new THREE.Vector3(12, 44, 12)
       ),
       type: 'building',
     });
   }
 
   /**
-   * School Complex
+   * Nusa Advanced Science Academy (School Complex)
+   * 68m width x 40m depth x 14m height with lecture halls, auditorium, science laboratories
    */
   private buildSchoolComplex(x: number, z: number, wallMat: THREE.Material, floorMat: THREE.Material): void {
     const y = getTerrainHeight(x, z);
     const school = new THREE.Group();
     school.position.set(x, y, z);
 
-    // Main classroom block
-    const mainBlock = new THREE.Mesh(new THREE.BoxGeometry(36, 7.5, 24), wallMat);
-    mainBlock.position.y = 3.75;
+    const glassCyanMat = new THREE.MeshLambertMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.8 });
+    const darkFrameMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+    const whiteMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
+
+    // Main 3-Story Classroom & Laboratory Block (48m x 12m x 32m)
+    const mainBlock = new THREE.Mesh(new THREE.BoxGeometry(48, 12, 32), whiteMat);
+    mainBlock.position.y = 6;
     school.add(mainBlock);
 
-    // Auditorium / Gym wing
-    const gym = new THREE.Mesh(new THREE.BoxGeometry(20, 10, 22), wallMat);
-    gym.position.set(-28, 5, 0);
+    // Cyan Glass ribbons across the academy facade
+    for (let f = 1; f <= 3; f++) {
+      const g = new THREE.Mesh(new THREE.BoxGeometry(42, 1.8, 0.4), glassCyanMat);
+      g.position.set(0, f * 3.8 - 0.5, 16.1);
+      school.add(g);
+    }
+
+    // Auditorium / Robotics Testing Wing (28m x 14m x 28m)
+    const gym = new THREE.Mesh(new THREE.BoxGeometry(28, 14, 28), darkFrameMat);
+    gym.position.set(-38, 7, 0);
     school.add(gym);
+
+    // Grand Entrance Colonnade
+    const colGeo = new THREE.CylinderGeometry(1.2, 1.2, 6, 8);
+    for (let c = -2; c <= 2; c++) {
+      const col = new THREE.Mesh(colGeo, darkFrameMat);
+      col.position.set(c * 6, 3, 18.5);
+      school.add(col);
+    }
 
     this.scene.add(school);
 
     const schoolBox = new THREE.Box3().setFromCenterAndSize(
-      new THREE.Vector3(x, y + 4, z),
-      new THREE.Vector3(56, 9, 26)
+      new THREE.Vector3(x - 14, y + 6.5, z),
+      new THREE.Vector3(76, 15, 36)
     );
     this.colliders.push({
       box: schoolBox,
@@ -954,10 +1497,13 @@ export class WorldBuilder {
     });
     this.buildingBounds.push(schoolBox);
 
-    // Register indoor loot spawn points for School Complex
-    this.houseSpawnPoints.push(new THREE.Vector3(x + 10, y + 0.5, z + 4));
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 10, y + 0.5, z - 4));
-    this.houseSpawnPoints.push(new THREE.Vector3(x - 28, y + 0.5, z));
+    // Register indoor loot spawn points for Academy
+    this.houseSpawnPoints.push(new THREE.Vector3(x + 12, y + 0.5, z + 6));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 12, y + 0.5, z - 6));
+    this.houseSpawnPoints.push(new THREE.Vector3(x - 38, y + 0.5, z)); // Inside Robotics Wing
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 4.5, z)); // Floor 2
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 8.5, z)); // Floor 3
+    this.houseSpawnPoints.push(new THREE.Vector3(x, y + 12.5, z)); // Roof deck
   }
 
   /**

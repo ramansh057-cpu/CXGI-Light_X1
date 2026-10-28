@@ -283,8 +283,8 @@ export default function App() {
 
             {/* Zone 3: Empty space (no settings) */}
             <div className="flex items-center gap-3">
-              <span className="text-xs font-mono text-amber-400/90 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/30">
-                Low-Res Performance Mode
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30">
+                Ultra-Clear 100% HD Mode
               </span>
             </div>
           </header>
@@ -292,9 +292,9 @@ export default function App() {
           {/* Main Hero Content */}
           <main className="relative z-10 my-auto py-8 max-w-2xl">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Optimized Low Resolution (Ultra Fast 60 FPS)</span>
+                <span>Crystal Clear HD Resolution (99% Clearer + Antialiasing)</span>
               </div>
 
               <h1 className="text-4xl md:text-6xl font-extrabold text-stone-100 tracking-tight leading-tight font-sans">

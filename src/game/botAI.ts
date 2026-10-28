@@ -428,16 +428,7 @@ export class BotManager {
     const activeBots = this.bots.filter(b => b.state !== 'dead' && b.state !== 'in_plane');
     const isPlayerInside = isPositionInsideBuilding(playerPos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
 
-    // POPULATION KEEPER: Maintain healthy enemy presence in the active safe zone
-    this.reinforcementTimer -= dt;
-    if (this.reinforcementTimer <= 0 && gamePhase === 'ground') {
-      this.reinforcementTimer = 14.0;
-      const aliveEnemies = this.bots.filter(b => b.state !== 'dead').length;
-      if (aliveEnemies < 14) {
-        const toSpawn = Math.min(3, 16 - aliveEnemies);
-        this.spawnSafeZoneReinforcements(safeCenterX, safeCenterZ, safeRadius, toSpawn);
-      }
-    }
+    // Dead enemies do not respawn: once an enemy is eliminated, they stay dead permanently.
 
     // FOOLPROOF SAFETY SWEEP: Hide dead/in-plane bots to prevent static "ghost" models
     const hiddenBots = this.bots.filter(b => b.state === 'dead' || b.state === 'in_plane');
@@ -688,38 +679,74 @@ export class BotManager {
       bot.jiggleTimer += dt;
       bot.crouchTimer -= dt;
 
-      // 4. SCAN FOR OPPONENTS: STRICT HIERARCHY
-      // "first bots will kill another bots then if they cannot find a bot but find me then they will shoot"
+      // 4. SCAN FOR OPPONENTS: "when I land on the ground then enemies can fight to another or me"
+      const isPlayerOnGround = (gamePhase === 'ground' || gamePhase === 'driving');
+      if (!isPlayerOnGround) {
+        // Player is still in the airplane, freefalling, or parachuting:
+        // Hold fire! Enemies do NOT fight each other or the player until player touches down!
+        if (bot.state === 'engaging') {
+          bot.state = 'patrolling';
+          bot.targetEnemy = null;
+        }
+        continue;
+      }
+
       const distToPlayer = bot.position.distanceTo(playerPos);
       let foundOpponentPos: THREE.Vector3 | null = null;
       let foundOpponentId: string | null = null;
       let foundOpponentType: 'player' | 'bot' = 'bot';
       let shortestDist = 120; // 120m detection radius
 
-      // If player is inside a building shelter or protected by landing grace, immediately break lock!
-      if (bot.targetEnemy === 'player' && (isPlayerInside || isPlayerInLandingGrace)) {
+      // If player is inside a building shelter, immediately break lock!
+      if (bot.targetEnemy === 'player' && isPlayerInside) {
         bot.targetEnemy = null;
         if (bot.state === 'engaging') {
           bot.state = 'patrolling';
         }
       }
 
-      // SCAN FOR PLAYER
+      // 1. SCAN FOR OTHER ENEMY BOTS (FROM RIVAL TEAMS)
+      for (let j = 0; j < activeBots.length; j++) {
+        const other = activeBots[j];
+        if (i === j) continue;
+        // Do not target own duo partner
+        if (bot.duoId !== undefined && other.duoId !== undefined && bot.duoId === other.duoId) continue;
+        if (other.state === 'dead' || other.state === 'in_plane' || other.state === 'knocked') continue;
+
+        const d = bot.position.distanceTo(other.position);
+        if (d > 120) continue;
+
+        const stickiness = (bot.targetEnemy === other.id) ? -20 : 0;
+        if (d + stickiness < shortestDist) {
+          const hasSightToOther = checkLineOfSight(bot.position, other.position, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
+          if (hasSightToOther) {
+            shortestDist = d + stickiness;
+            foundOpponentPos = other.position;
+            foundOpponentId = other.id;
+            foundOpponentType = 'bot';
+          }
+        }
+      }
+
+      // 2. SCAN FOR PLAYER (ENEMIES TARGET & HIT PLAYER ONCE PLAYER IS ON THE GROUND)
       const isPlayerTargetable = playerHealth > 0 && 
-                                 gamePhase === 'ground' && 
-                                 !isPlayerInside && 
-                                 !isPlayerInLandingGrace;
+                                 isPlayerOnGround && 
+                                 !isPlayerInside;
 
       if (isPlayerTargetable && distToPlayer <= 120.0) {
         const botEyePos = new THREE.Vector3(bot.position.x, bot.position.y + 1.6, bot.position.z);
         const playerTargetHeight = isPlayerCrouched ? 0.8 : 1.6;
         const playerEyePos = new THREE.Vector3(playerPos.x, playerPos.y + playerTargetHeight, playerPos.z);
-        const hasSightToPlayer = checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
+        const stickiness = (bot.targetEnemy === 'player') ? -25 : 0;
 
-        if (hasSightToPlayer) {
-          foundOpponentPos = playerPos;
-          foundOpponentId = 'player';
-          foundOpponentType = 'player';
+        if (distToPlayer + stickiness < shortestDist) {
+          const hasSightToPlayer = checkLineOfSight(botEyePos, playerEyePos, this.worldBuilder.colliders, this.worldBuilder.buildingBounds);
+          if (hasSightToPlayer) {
+            shortestDist = distToPlayer + stickiness;
+            foundOpponentPos = playerPos;
+            foundOpponentId = 'player';
+            foundOpponentType = 'player';
+          }
         }
       }
 
@@ -863,8 +890,8 @@ export class BotManager {
 
         // BURST MODE FIRE AT PLAYER ONLY IF NO BOT CAN BE FOUND AND REACTION DELAY HAS ELAPSED
         if (bot.targetEnemy === 'player' && distToEnemy < 120) {
-          if (isPlayerInside || isPlayerInLandingGrace) {
-            // Player is inside home shelter or protected by landing grace: cannot target
+          if (isPlayerInside || !isPlayerOnGround) {
+            // Player is inside home shelter or not on ground: cannot target
             bot.targetEnemy = null;
             bot.state = 'patrolling';
           } else if (bot.reactionTimer <= 0) {
@@ -913,7 +940,7 @@ export class BotManager {
               }
             }
           }
-        } else if (bot.targetEnemy !== 'player' && distToEnemy < 120 && !isInside) {
+        } else if (bot.targetEnemy !== 'player' && distToEnemy < 120) {
           // Bot vs Bot fight (disciplined burst with prolonged combat)
           if (bot.burstCount > 0) {
             bot.burstTimer -= dt;
@@ -943,12 +970,12 @@ export class BotManager {
                     const isHeadshot = Math.random() < 0.15;
                     const dmgPerShot = (14 + Math.floor(Math.random() * 5)) * (isHeadshot ? 1.5 : 1.0);
                     const result = this.damageBot(otherBot.id, dmgPerShot, isHeadshot, bot.name, bot.weaponDef.name);
-                    if (result.isDead) {
+                    if (result.isDead || result.isKnocked) {
                       bot.kills++;
                       bot.health = 100;
-                      bot.state = 'looting';
-                      bot.targetEnemy = null; // Target eliminated: scan for next bot!
-                      bot.stateTimer = 7.0 + Math.random() * 4.0;
+                      bot.state = 'patrolling';
+                      bot.targetEnemy = null; // Target eliminated or knocked down: scan for next active opponent!
+                      bot.stateTimer = 5.0 + Math.random() * 3.0;
                       bot.burstCount = 0;
                     }
                   }
@@ -1011,6 +1038,17 @@ export class BotManager {
             const rndR = Math.random() * (safeRadius * 0.4);
             bot.targetPosition.set(safeCenterX + Math.cos(rndAngle) * rndR, 0, safeCenterZ + Math.sin(rndAngle) * rndR);
             bot.stateTimer = 18;
+          } else if (bot.isOutsideGuard && bot.guardPosition) {
+            bot.state = 'patrolling';
+            // Subtle local guard stance (within 3m of guard position)
+            const rndAngle = Math.random() * Math.PI * 2;
+            const wanderDist = Math.random() * 3.0;
+            bot.targetPosition.set(
+              bot.guardPosition.x + Math.cos(rndAngle) * wanderDist,
+              0,
+              bot.guardPosition.z + Math.sin(rndAngle) * wanderDist
+            );
+            bot.stateTimer = 6 + Math.random() * 4;
           } else {
             bot.state = Math.random() > 0.4 ? 'patrolling' : 'looting';
             const rndAngle = Math.random() * Math.PI * 2;
@@ -1098,7 +1136,7 @@ export class BotManager {
   }
 
   /**
-   * DAMAGE BOT: Takes 4-5 bullets to knock, and 4-5 bullets to finish!
+   * DAMAGE BOT: Takes 7 bullets to knock down (100 / 7 = 14.29 HP per hit)
    */
   public damageBot(
     botId: string,
@@ -1112,12 +1150,52 @@ export class BotManager {
 
     const isPlayerKiller = killerName === 'You' || killerName === 'Player';
 
-    // Real HP reduction (10 hits to kill enemy when damage is 10)
+    // If bot is already knocked down, damage its knockedHealth to finish it off
+    if (bot.state === 'knocked') {
+      bot.knockedHealth -= damage;
+      if (bot.knockedHealth <= 0) {
+        bot.knockedHealth = 0;
+        this.killBot(bot, killerName, weaponUsed, isHeadshot, isPlayerKiller);
+        return { isDead: true, isKnocked: false, remainingHealth: 0 };
+      }
+      return { isDead: false, isKnocked: true, remainingHealth: bot.knockedHealth };
+    }
+
+    // Normal state: reduce health (8 hits to knock down enemy when damage is 12.5)
     bot.health -= damage;
     if (bot.health <= 0) {
       bot.health = 0;
-      this.killBot(bot, killerName, weaponUsed, isHeadshot, isPlayerKiller);
-      return { isDead: true, isKnocked: false, remainingHealth: 0 };
+
+      // Check if duo partner is still alive!
+      const partnerAlive = bot.duoId !== undefined && this.bots.some(b => b.id !== bot.id && b.duoId === bot.duoId && b.state !== 'dead');
+
+      if (partnerAlive) {
+        // Knock down the enemy bot!
+        bot.state = 'knocked';
+        bot.knockedHealth = 100;
+        bot.targetEnemy = null;
+        bot.mesh.position.y -= 0.6;
+        bot.mesh.rotation.x = Math.PI / 4;
+        if (bot.knockedIndicator) bot.knockedIndicator.visible = true;
+
+        this.onKillFeed({
+          id: `knock_${Date.now()}_${Math.random()}`,
+          killer: killerName,
+          victim: bot.name,
+          weapon: weaponUsed,
+          isHeadshot,
+          isPlayerKiller,
+          isPlayerVictim: false,
+          isKnockout: true,
+          timestamp: Date.now(),
+        });
+
+        return { isDead: false, isKnocked: true, remainingHealth: 0 };
+      } else {
+        // No living partner left -> direct elimination!
+        this.killBot(bot, killerName, weaponUsed, isHeadshot, isPlayerKiller);
+        return { isDead: true, isKnocked: false, remainingHealth: 0 };
+      }
     }
 
     return { isDead: false, isKnocked: false, remainingHealth: bot.health };
@@ -1130,6 +1208,7 @@ export class BotManager {
     isHeadshot: boolean,
     isPlayerKiller: boolean
   ): void {
+    if (bot.state === 'dead') return;
     bot.state = 'dead';
     this.scene.remove(bot.mesh);
     this.scene.remove(bot.shadowMesh);
@@ -1146,6 +1225,14 @@ export class BotManager {
       isPlayerVictim: false,
       timestamp: Date.now(),
     });
+
+    // If duo partner was already knocked down, eliminate them immediately (Duo wipe)
+    if (bot.duoId !== undefined) {
+      const knockedPartner = this.bots.find(b => b.id !== bot.id && b.duoId === bot.duoId && b.state === 'knocked');
+      if (knockedPartner) {
+        this.killBot(knockedPartner, killerName, 'Duo Wipeout', false, isPlayerKiller);
+      }
+    }
   }
 
   private spawnDeathCrate(bot: BotInstance): void {
@@ -1340,10 +1427,8 @@ export class BotManager {
     }
   }
 
-  public cleanupAndReplaceUnfindable(playerPos: THREE.Vector3): void {
-    if (this.getAliveCount() < 4) {
-      this.spawnFreshEnemyNear(playerPos);
-    }
+  public cleanupAndReplaceUnfindable(_playerPos: THREE.Vector3): void {
+    // Enemies do not respawn once dead
   }
 
   public getAliveCount(): number {

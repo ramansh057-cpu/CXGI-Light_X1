@@ -172,26 +172,27 @@ export class GameEngine {
     this.container = container;
     this.callbacks = callbacks;
 
-    // 1. Scene & Camera
+    // 1. Scene & Camera (Crystal clear vibrant sky with light atmospheric horizon)
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x9fb3c8); // overcast foggy sky
-    this.scene.fog = new THREE.FogExp2(0xa3b6c8, 0.0055); // dense atmospheric fog
+    this.scene.background = new THREE.Color(0x94c2ed); // Clear blue tropical sky
+    this.scene.fog = new THREE.FogExp2(0x94c2ed, 0.0010); // Light horizon haze for 900m clear visibility
 
     const aspect = container.clientWidth / container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(72, aspect, 0.05, 1200);
+    this.camera = new THREE.PerspectiveCamera(72, aspect, 0.05, 1500);
     this.clock = new THREE.Clock();
 
-    // 2. Renderer optimized for older laptops
+    // 2. High-Clarity Antialiased WebGLRenderer (99% Clearer, Crisp High-Definition)
     this.renderer = new THREE.WebGLRenderer({
-      antialias: false,
+      antialias: true,
       powerPreference: 'high-performance',
-      precision: 'mediump',
+      precision: 'highp',
     });
+    const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2);
+    this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(container.clientWidth * this.settings.renderScale, container.clientHeight * this.settings.renderScale, false);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
-    this.renderer.domElement.style.imageRendering = 'pixelated';
-    this.renderer.setPixelRatio(1.0);
+    this.renderer.domElement.style.imageRendering = 'auto';
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
@@ -257,24 +258,25 @@ export class GameEngine {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
 
+    const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2);
+    this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w * newSettings.renderScale, h * newSettings.renderScale, false);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
-    this.renderer.domElement.style.imageRendering = 'pixelated';
+    this.renderer.domElement.style.imageRendering = 'auto';
 
-
-    this.camera.far = newSettings.drawDistance;
+    this.camera.far = Math.max(900, newSettings.drawDistance);
     this.camera.updateProjectionMatrix();
 
-    const fogDensity = newSettings.drawDistance === 180 ? 0.015 : newSettings.drawDistance === 350 ? 0.008 : newSettings.drawDistance === 600 ? 0.0055 : 0.0035;
-    this.scene.fog = new THREE.FogExp2(0xa3b6c8, fogDensity);
+    const fogDensity = newSettings.drawDistance <= 350 ? 0.0035 : newSettings.drawDistance <= 600 ? 0.0018 : 0.0010;
+    this.scene.fog = new THREE.FogExp2(0x94c2ed, fogDensity);
 
     if (newSettings.shadowMode === 'directional_fast') {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.dirLight.castShadow = true;
-      this.dirLight.shadow.mapSize.width = 1024;
-      this.dirLight.shadow.mapSize.height = 1024;
+      this.dirLight.shadow.mapSize.width = 2048;
+      this.dirLight.shadow.mapSize.height = 2048;
     } else {
       this.renderer.shadowMap.enabled = false;
       this.dirLight.castShadow = false;
@@ -551,10 +553,12 @@ export class GameEngine {
     const h = this.container.clientHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2);
+    this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w * this.settings.renderScale, h * this.settings.renderScale, false);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
-    this.renderer.domElement.style.imageRendering = 'pixelated';
+    this.renderer.domElement.style.imageRendering = 'auto';
   };
 
   private setupInputHandlers(): void {
@@ -784,8 +788,8 @@ export class GameEngine {
       if (this.playerPos.y <= groundY + 0.5) {
         this.playerPos.y = groundY;
         this.gamePhase = 'ground';
-        this.playerLandingGraceTimer = 15.0; // 15-second landing grace period starts on touchdown
-        this.callbacks.onPromptChange('TOUCHDOWN! BOT COMBAT UNDERWAY - LOOT UP!');
+        this.playerLandingGraceTimer = 0; // Immediate combat unlocked upon touching the ground!
+        this.callbacks.onPromptChange('TOUCHDOWN! COMBAT UNLOCKED — SURVIVE THE BATTLE!');
         setTimeout(() => this.callbacks.onPromptChange(null), 3500);
       }
     }
@@ -1093,7 +1097,7 @@ export class GameEngine {
 
     if (closestHit) {
       sound.playHitmarker(closestHit.isHeadshot);
-      const finalDmg = 10;
+      const finalDmg = 100 / 7; // Exactly 7 hits to knock down 100 HP enemy (100 / 7 = ~14.29)
       this.playerDamageDealt += finalDmg;
 
       const result = this.botManager.damageBot(
@@ -1104,10 +1108,15 @@ export class GameEngine {
         weapon.name
       );
 
-      this.callbacks.onHitmarker(closestHit.isHeadshot, result.isDead);
+      this.callbacks.onHitmarker(closestHit.isHeadshot, result.isDead || result.isKnocked);
 
-      // HIT NOTIFICATION
-      const testMsg = `[HIT] Target: ${closestHit.bot.name} | HP Left: ${Math.round(result.remainingHealth)} | Dist: ${Math.round(closestHit.dist)}m`;
+      // HIT / KNOCK / ELIMINATION NOTIFICATION
+      let testMsg = `[HIT] Target: ${closestHit.bot.name} | HP Left: ${Math.max(0, Math.round(result.remainingHealth))} | Dist: ${Math.round(closestHit.dist)}m`;
+      if (result.isKnocked) {
+        testMsg = `[KNOCKED DOWN (7 HITS)] Target: ${closestHit.bot.name} | Dist: ${Math.round(closestHit.dist)}m`;
+      } else if (result.isDead) {
+        testMsg = `[ELIMINATED] Target: ${closestHit.bot.name} | Dist: ${Math.round(closestHit.dist)}m`;
+      }
       console.log(testMsg);
       this.callbacks.onPromptChange(testMsg);
       setTimeout(() => this.callbacks.onPromptChange(null), 2500);
@@ -1241,6 +1250,13 @@ export class GameEngine {
   }
 
   public damagePlayer(rawDamage: number, attackerName: string, weapon: WeaponId): void {
+    if (this.playerHealth <= 0 && this.isPlayerKnocked) {
+      this.playerKnockedHealth -= rawDamage || (100 / 6);
+      if (this.playerKnockedHealth <= 0) {
+        this.handlePlayerDeath(attackerName);
+      }
+      return;
+    }
     if (this.playerHealth <= 0) return;
 
     // Direct Home Shelter Immunity: If player is inside home/building, reject all outside enemy gunfire
@@ -1249,14 +1265,22 @@ export class GameEngine {
       return;
     }
 
-    // 5 HITS TO KILL: 20 HP damage per hit (100 HP / 20 = exactly 5 hits to kill)
-    const dmg = rawDamage || 20;
+    // 6 HITS TO KNOCK DOWN: 100 / 6 HP damage per hit (16.6667 HP per hit)
+    const dmg = rawDamage || (100 / 6);
     this.playerHealth = Math.max(0, this.playerHealth - dmg);
     this.callbacks.onHealthChange(this.playerHealth, this.playerBoost);
     sound.playImpact('flesh');
 
     if (this.playerHealth <= 0) {
-      this.handlePlayerDeath(attackerName);
+      if (!this.isPlayerKnocked && this.squadManager.getAliveTeammatesCount() > 0) {
+        // Player enters crawling knockout state! (6 hits)
+        this.isPlayerKnocked = true;
+        this.playerKnockedHealth = 100;
+        this.callbacks.onPromptChange(`[KNOCKED DOWN (6 HITS)] KNOCKED BY ${attackerName}! CRAWL TO TEAMMATE PHOENIX FOR REVIVE!`);
+        setTimeout(() => this.callbacks.onPromptChange(null), 3500);
+      } else {
+        this.handlePlayerDeath(attackerName);
+      }
     }
   }
 
